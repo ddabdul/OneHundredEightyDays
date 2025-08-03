@@ -1,0 +1,24 @@
+{
+  "originHash" : "e2c64aa6c99814b0ab37883bf65a0fc9547850fe263408aadb1590c483a82eb6",
+  "pins" : [
+    {
+      "identity" : "boardingpasskit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/anomaddev/BoardingPassKit.git",
+      "state" : {
+        "revision" : "a4e791e1354f31b6e8156713caf09fd392b51f60",
+        "version" : "0.9.4"
+      }
+    },
+    {
+      "identity" : "swiftdate",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/malcommac/SwiftDate.git",
+      "state" : {
+        "revision" : "5d943224c3bb173e6ecf27295611615eba90c80e",
+        "version" : "7.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
