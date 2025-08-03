@@ -1,4 +1,13 @@
+//
+//  BCBP.swift
+//  OneHundredEightyDays
+//
+//  Created by Olivier on 03/08/2025.
+//
+
+
 import Foundation
+import CoreData
 
 // MARK: – BCBP Data Model
 
@@ -75,3 +84,17 @@ func dateFromJulian(
     guard let jan1 = cal.date(from: comps) else { return nil }
     return cal.date(byAdding: .day, value: dayOfYear-1, to: jan1)
 }
+
+// MARK: – Core Data Save
+func saveTrip(from bc: BCBP, imageData: Data?, ctx: NSManagedObjectContext) throws {
+    let trip = TripEntity(context: ctx)
+    trip.id = UUID()
+    trip.airline        = bc.operatingCarrier
+    trip.departureCity  = bc.origin
+    trip.arrivalCity    = bc.destination
+    trip.flightNumber   = bc.flightNumber
+    trip.travelDate     = dateFromJulian(bc.julianDate)
+    trip.imageData      = imageData
+    try ctx.save()
+}
+

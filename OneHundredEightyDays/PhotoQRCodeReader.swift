@@ -5,12 +5,13 @@
 //  Created by Olivier on 03/08/2025.
 //
 
-
 import SwiftUI
 import PhotosUI
-import UIKit
 import Vision
+import UIKit
 
+/// A simple view that lets the user pick an image,
+/// runs Vision barcode detection, and displays the raw payload.
 struct PhotoQRCodeReader: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var uiImage: UIImage?
@@ -20,7 +21,7 @@ struct PhotoQRCodeReader: View {
     var body: some View {
         VStack(spacing: 20) {
             PhotosPicker(
-                "Select Photo",
+                "Select Boarding-Pass Photo",
                 selection: $pickerItem,
                 matching: .images
             )
@@ -37,26 +38,29 @@ struct PhotoQRCodeReader: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxHeight: 200)
+                    .cornerRadius(8)
             }
             
             if let payload = qrPayload {
-                ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("🔍 Detected payload:")
                         .font(.headline)
-                    Text(payload)
-                        .font(.body)
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(8)
+                    ScrollView {
+                        Text(payload)
+                            .font(.body)
+                            .padding(8)
+                            .background(Color(.secondarySystemBackground))
+                            .cornerRadius(6)
+                    }
                 }
-                .padding()
+                .padding(.horizontal)
             }
             
             if let err = errorMessage {
                 Text(err)
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
-                    .padding()
+                    .padding(.horizontal)
             }
             
             Spacer()
@@ -64,6 +68,7 @@ struct PhotoQRCodeReader: View {
         .padding()
     }
     
+    /// Loads the picked image, displays it, and calls your shared `detectBarcode(in:)`.
     private func loadImageAndDetect(from item: PhotosPickerItem?) async {
         qrPayload = nil
         errorMessage = nil
@@ -74,8 +79,11 @@ struct PhotoQRCodeReader: View {
             guard let data = try await item.loadTransferable(type: Data.self),
                   let image = UIImage(data: data)
             else {
-                throw NSError(domain: "", code: -1,
-                              userInfo: [NSLocalizedDescriptionKey: "Failed to load image"])
+                throw NSError(
+                  domain: "",
+                  code: -1,
+                  userInfo: [NSLocalizedDescriptionKey: "Failed to load image"]
+                )
             }
             uiImage = image
             
@@ -88,35 +96,6 @@ struct PhotoQRCodeReader: View {
             
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-}
-
-/// Async helper that returns the first barcode payload (QR/Aztec/PDF417/Code128) it finds.
-func detectBarcode(in image: UIImage) async throws -> String? {
-    guard let cgImage = image.cgImage else {
-        throw NSError(domain: "", code: -1,
-                      userInfo: [NSLocalizedDescriptionKey: "Could not get CGImage"])
-    }
-    
-    return try await withCheckedThrowingContinuation { cont in
-        let request = VNDetectBarcodesRequest { req, err in
-            if let e = err {
-                cont.resume(throwing: e)
-            } else {
-                let payload = (req.results as? [VNBarcodeObservation])?
-                    .compactMap { $0.payloadStringValue }
-                    .first
-                cont.resume(returning: payload)
-            }
-        }
-        request.symbologies = [.QR, .Aztec, .PDF417, .code128]
-        
-        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-        do {
-            try handler.perform([request])
-        } catch {
-            cont.resume(throwing: error)
         }
     }
 }

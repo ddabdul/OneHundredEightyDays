@@ -13,8 +13,11 @@ struct OneHundredEightyDaysApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            // Use your photo‐based QR reader as the root view:
+            PhotoQRCodeReader()
+                .environment(\.managedObjectContext,
+                             persistenceController.container.viewContext)
         }
     }
 }
+

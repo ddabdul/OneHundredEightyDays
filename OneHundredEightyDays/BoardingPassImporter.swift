@@ -23,7 +23,7 @@ struct BoardingPassImporter: View {
                 matching: .images,
                 photoLibrary: .shared()
             )
-            .onChange(of: pickerItem) { newItem in
+            .onChange(of: pickerItem) { oldItem, newItem in
                 Task {
                     await loadImage(from: newItem)
                 }
