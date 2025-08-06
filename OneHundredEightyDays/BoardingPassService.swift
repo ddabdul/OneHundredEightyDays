@@ -70,7 +70,7 @@ struct BoardingPassService {
           cont.resume(throwing: BoardingPassServiceError.noBarcodeFound)
         }
       }
-      request.symbologies = [.QR, .PDF417, .code128, .Aztec]
+        request.symbologies = [.qr, .pdf417, .code128, .aztec]
       
       let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
       do {
@@ -109,7 +109,7 @@ struct BoardingPassService {
     _ day: Int,
     year: Int = Calendar.current.component(.year, from: Date())
   ) -> Date? {
-    var comps = DateComponents(year: year, month: 1, day: 1)
+      let comps = DateComponents(year: year, month: 1, day: 1)
     let cal = Calendar(identifier: .gregorian)
     guard let jan1 = cal.date(from: comps) else { return nil }
     return cal.date(byAdding: .day, value: day - 1, to: jan1)
