@@ -2,9 +2,6 @@
 //  BoardingPassImporter.swift
 //  OneHundredEightyDays
 //
-//  Created by Olivier on 03/08/2025.
-//
-
 
 import SwiftUI
 import PhotosUI
@@ -23,10 +20,8 @@ struct BoardingPassImporter: View {
                 matching: .images,
                 photoLibrary: .shared()
             )
-            .onChange(of: pickerItem) { oldItem, newItem in
-                Task {
-                    await loadImage(from: newItem)
-                }
+            .onChange(of: pickerItem) { _, newItem in
+                Task { await loadImage(from: newItem) }
             }
 
             if let img = uiImage {
@@ -61,14 +56,22 @@ struct BoardingPassImporter: View {
         }
     }
 
-    /// Decode & save
+    /// Decode the barcode, parse BCBP, and save with City + Country names
     private func processBoardingPass(image: UIImage, rawData: Data) async throws {
         guard let payload = try await detectBarcode(in: image) else {
-            throw NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No barcode found"])
+            throw NSError(domain: "", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "No barcode found"])
         }
-        // parse the BCBP string (use the parseBCBP function from earlier)
+
+        // Parse the BCBP string
         let bc = try parseBCBP(payload)
-        // save into Core Data
-        try saveTrip(from: bc, imageData: rawData, ctx: viewContext)
+
+        // Save using the centralized TripStore, which maps IATA/city codes
+        // to "City, Country" via AirportData.
+        do {
+            _ = try TripStore.saveFromBCBP(bc, imageData: rawData, in: viewContext)
+        } catch {
+            throw error
+        }
     }
 }
