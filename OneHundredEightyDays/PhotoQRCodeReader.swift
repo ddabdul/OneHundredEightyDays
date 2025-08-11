@@ -43,7 +43,7 @@ struct PhotoQRCodeReader: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("✈️ Passenger: \(pass.info.name)")
                     Text("📋 PNR: \(pass.info.pnrCode)")
-                    Text("🛫 \(pass.info.origin) → \(pass.info.destination)")
+                    Text("🧭 \(cityCountry(pass.info.origin)) → \(cityCountry(pass.info.destination))")
                     Text("🛬 Carrier: \(pass.info.operatingCarrier) \(pass.info.flightno)")
                     if let date = dateFromJulian(pass.info.julianDate) {
                         Text("📅 Date: \(date.formatted(date: .abbreviated, time: .omitted))")
@@ -67,6 +67,18 @@ struct PhotoQRCodeReader: View {
         .padding()
     }
 
+    private func cityCountry(_ code: String) -> String {
+        if let a = AirportData.shared.airport(for: code) {
+            // `a.country` should already be a full name if you used the countryCode→name mapping
+            let country = a.country
+            // fall back to airport name if city is empty in your JSON
+            let city = a.city.isEmpty ? a.name : a.city
+            return "\(city), \(country)"
+        }
+        // fallback: show the raw code if we can't resolve it
+        return code
+    }
+    
     private func loadImageAndProcess(from item: PhotosPickerItem?) async {
         // reset UI
         boardingPass = nil
@@ -101,13 +113,4 @@ struct PhotoQRCodeReader: View {
     }
 }
 
-struct PhotoQRCodeReader_Previews: PreviewProvider {
-    static var previews: some View {
-        PhotoQRCodeReader()
-            .environment(
-              \.managedObjectContext,
-              PersistenceController.preview.container.viewContext
-            )
-    }
-}
 

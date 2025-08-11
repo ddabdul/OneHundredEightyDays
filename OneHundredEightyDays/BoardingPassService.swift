@@ -135,7 +135,7 @@ struct BoardingPassService {
         _ day: Int,
         year: Int = Calendar.current.component(.year, from: Date())
     ) -> Date? {
-        var comps = DateComponents(year: year, month: 1, day: 1)
+        let comps = DateComponents(year: year, month: 1, day: 1)
         let cal = Calendar(identifier: .gregorian)
         guard let jan1 = cal.date(from: comps) else { return nil }
         return cal.date(byAdding: .day, value: day - 1, to: jan1)
