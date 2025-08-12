@@ -8,7 +8,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
-import BoardingPassKit   // for the `BoardingPass` type
+import BoardingPassKit
 
 struct PhotoQRCodeReader: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -18,6 +18,9 @@ struct PhotoQRCodeReader: View {
     @State private var boardingPass: BoardingPass?
     @State private var errorMessage: String?
 
+    // Use the unified lookup that also reads CityCodes_full.plist
+    private static let airportLookup = AirportLookup()
+
     var body: some View {
         VStack(spacing: 20) {
             PhotosPicker(
@@ -25,7 +28,8 @@ struct PhotoQRCodeReader: View {
                 selection: $pickerItem,
                 matching: .images
             )
-            .onChange(of: pickerItem) { _, newItem in
+            // iOS 17-friendly onChange signature
+            .onChange(of: pickerItem) { oldItem, newItem in
                 Task { await loadImageAndProcess(from: newItem) }
             }
             .buttonStyle(.borderedProminent)
@@ -67,50 +71,50 @@ struct PhotoQRCodeReader: View {
         .padding()
     }
 
+    // MARK: - Helpers
+
+    /// Returns "Metro City, Country" using AirportLookup (which consults CityCodes_full.plist)
     private func cityCountry(_ code: String) -> String {
-        if let a = AirportData.shared.airport(for: code) {
-            // `a.country` should already be a full name if you used the countryCode→name mapping
-            let country = a.country
-            // fall back to airport name if city is empty in your JSON
-            let city = a.city.isEmpty ? a.name : a.city
-            return "\(city), \(country)"
+        let u = code.uppercased()
+
+        // Metro city from CityCodes_full.plist
+        let metro = Self.airportLookup.metroCity(for: u)
+
+        // Country (localized)
+        let country = Self.airportLookup.countryName(for: u) ?? ""
+
+        // Fallback to airport city/name if metro missing
+        if let a = Self.airportLookup.airport(for: u) {
+            let city = metro ?? (a.city.isEmpty ? a.name : a.city)
+            return country.isEmpty ? city : "\(city), \(country)"
         }
-        // fallback: show the raw code if we can't resolve it
-        return code
+
+        // Last-resort fallbacks
+        if let metro { return country.isEmpty ? metro : "\(metro), \(country)" }
+        return u
     }
-    
+
     private func loadImageAndProcess(from item: PhotosPickerItem?) async {
-        // reset UI
         boardingPass = nil
         errorMessage = nil
-
-        guard let item = item else { return }
+        guard let item else { return }
 
         do {
-            // 1) Load image & data
             guard let data = try await item.loadTransferable(type: Data.self),
-                  let image = UIImage(data: data)
-            else {
-                throw NSError(
-                    domain: "",
-                    code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to load image"]
-                )
+                  let image = UIImage(data: data) else {
+                throw NSError(domain: "", code: -1,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to load image"])
             }
             uiImage = image
 
-            // 2) Decode + save via your shared service
             let pass = try await BoardingPassService.process(
                 image: image,
                 rawData: data,
                 in: viewContext
             )
             boardingPass = pass
-
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 }
-
-

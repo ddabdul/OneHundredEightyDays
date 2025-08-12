@@ -1,95 +1,202 @@
-// AirportData.swift
+//
+//  Airport.swift
 //  OneHundredEightyDays
 //
-//  Created by Olivier on 03/08/2025.
+//  Uses CityCodes_full.plist to resolve IATA "city code" → metro city names.
+//  Example: BRU (Zaventem municipality) → Brussels (metro city).
+//
 
 import Foundation
+import os
 
-// What we need at runtime
-struct Airport: Decodable {
-    let code: String                 // IATA airport code, e.g. "LHR"
-    let name: String
-    let city: String
-    let countryCode: String          // ISO like "GB"
-    let cityCode: String?            // metro code, e.g. "LON"
+// MARK: - Models
 
-    var country: String {
-        Locale.current.localizedString(forRegionCode: countryCode.uppercased()) ?? countryCode
+/// Compact airport record decoded from `airports_compact.plist`.
+/// - Note: `country` is ISO 3166-1 alpha-2 (e.g., "DE", "GB").
+/// - Note: `cityCode` is the IATA "metro" code used to join with CityCodes_full.plist.
+struct AirportLite: Decodable, Sendable {
+    let city: String            // municipality/city near the airport (may be Zaventem for BRU)
+    let country: String         // ISO alpha-2
+    let cityCode: String        // IATA "city" (metro) code
+    let name: String            // airport name
+
+    /// Localized country display name for the current user locale.
+    var localizedCountryName: String {
+        CountryNamer.shared.name(for: country)
     }
 }
 
-// JSON row shape (your file is an array of these)
-private struct AirportRow: Decodable {
-    let code: String
-    let name: String?
-    let city: String?
-    let country: String?
-    let city_code: String?
+/// Entry decoded from `CityCodes_full.plist` (array of dictionaries).
+/// Keys: city, region (may be ""), countryCode (ISO alpha-2), cityCode (IATA).
+struct CityIndexEntry: Decodable, Sendable {
+    let city: String
+    let region: String
+    let countryCode: String
+    let cityCode: String
 }
 
-final class AirportData {
-    static let shared = AirportData()
+// MARK: - Country name localization
 
-    // Index by airport code ("LHR" → Airport)
-    private var byAirport: [String: Airport] = [:]
-    // Index by city/metro code ("LON" → ("London","GB"))
-    private var byCityCode: [String: (city: String, countryCode: String)] = [:]
+/// Resolves localized country names from ISO region codes, with caching.
+/// Thread-safe via an internal lock. Cache is cleared when the system locale changes.
+final class CountryNamer {
+    static let shared = CountryNamer()
+
+    private let log = Logger(subsystem: "OneHundredEightyDays", category: "CountryNamer")
+    private var cache: [CacheKey: String] = [:]
+    private let lock = NSLock()
+
+    private struct CacheKey: Hashable {
+        let locale: String
+        let region: String
+    }
 
     private init() {
-        let b = Bundle.main
-        let url = b.url(forResource: "airports", withExtension: "json")
-              ?? b.url(forResource: "Airports", withExtension: "json")
-              ?? b.url(forResource: "airports", withExtension: "json", subdirectory: "airports")
-        guard let url else {
-            let all = b.paths(forResourcesOfType: "json", inDirectory: nil)
-            print("⚠️ Could not load airports.json. JSONs in bundle: \(all)")
-            return
-        }
-
-        do {
-            let data = try Data(contentsOf: url)
-            let rows = try JSONDecoder().decode([AirportRow].self, from: data)
-
-            for r in rows {
-                guard let n = r.name, let cc = r.country else { continue }
-
-                let airport = Airport(
-                    code: r.code.uppercased(),
-                    name: n,
-                    city: (r.city ?? "").trimmingCharacters(in: .whitespaces),
-                    countryCode: cc,
-                    cityCode: r.city_code?.uppercased()
-                )
-
-                byAirport[airport.code] = airport
-
-                if let metro = airport.cityCode, !metro.isEmpty {
-                    // prefer an entry that has a city name
-                    let current = byCityCode[metro]
-                    let cityName = airport.city.isEmpty ? (current?.city ?? "") : airport.city
-                    byCityCode[metro] = (cityName, airport.countryCode)
-                }
-            }
-        } catch {
-            print("⚠️ Failed to decode airports.json:", error)
+        NotificationCenter.default.addObserver(
+            forName: NSLocale.currentLocaleDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            lock.lock()
+            cache.removeAll()
+            lock.unlock()
+            log.debug("Locale changed, cleared country name cache")
         }
     }
 
-    /// For compatibility if you already call this somewhere.
-    func airport(for code: String) -> Airport? { byAirport[code.uppercased()] }
+    /// Returns the localized country display name for a given ISO region code.
+    func name(for regionCode: String, locale: Locale = .autoupdatingCurrent) -> String {
+        let code = regionCode.uppercased()
+        let key = CacheKey(locale: locale.identifier, region: code)
 
-    /// NEW: returns "City, Country" for either an airport IATA code *or* a city/metro code.
-    func displayName(forCode code: String) -> String {
-        let key = code.uppercased()
+        lock.lock()
+        if let cached = cache[key] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
 
-        if let a = byAirport[key] {
-            let city = a.city.isEmpty ? a.name : a.city
-            return "\(city), \(a.country)"
+        let localized = locale
+            .localizedString(forRegionCode: code)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let value = (localized?.isEmpty == false) ? localized! : code
+
+        lock.lock()
+        cache[key] = value
+        lock.unlock()
+        return value
+    }
+}
+
+// MARK: - City index (IATA city/metro code → display info)
+
+/// Immutable lookup built from CityCodes_full.plist.
+/// Primary key: cityCode (IATA), value: CityIndexEntry
+final class CityIndex {
+    private let byCityCode: [String: CityIndexEntry]
+
+    init(entries: [CityIndexEntry]) {
+        var dict: [String: CityIndexEntry] = [:]
+        dict.reserveCapacity(entries.count)
+        for e in entries {
+            dict[e.cityCode.uppercased()] = e
         }
-        if let metro = byCityCode[key] {
-            let country = Locale.current.localizedString(forRegionCode: metro.countryCode.uppercased()) ?? metro.countryCode
-            return "\(metro.city), \(country)"
+        self.byCityCode = dict
+    }
+
+    /// Convenience initializer that loads from bundle.
+    convenience init?(bundle: Bundle = .main) {
+        guard let url = bundle.url(forResource: "CityCodes_full", withExtension: "plist") else {
+            assertionFailure("CityCodes_full.plist not found in bundle")
+            return nil
         }
-        return code // fallback if unknown
+        do {
+            let data = try Data(contentsOf: url)
+            let entries = try PropertyListDecoder().decode([CityIndexEntry].self, from: data)
+            self.init(entries: entries)
+        } catch {
+            assertionFailure("Failed to decode CityCodes_full.plist: \(error)")
+            return nil
+        }
+    }
+
+    /// Returns the metro city entry for an IATA city code.
+    func entry(forCityCode cityCode: String) -> CityIndexEntry? {
+        byCityCode[cityCode.uppercased()]
+    }
+}
+
+// MARK: - Airport lookup
+
+/// Loads and serves airport records by code, and resolves metro city using CityCodes_full.plist.
+final class AirportLookup {
+    private let byCode: [String: AirportLite]
+    private let cityIndex: CityIndex?
+
+    init(bundle: Bundle = .main) {
+        self.byCode = AirportLookup.loadAirports(from: bundle)
+        self.cityIndex = CityIndex(bundle: bundle) // nil if file missing/decoding fails
+    }
+
+    /// Human-friendly string like "BRU — Brussels, Belgium"
+    /// Uses CityCodes_full.plist to map IATA cityCode → metro city name.
+    func displayName(for code: String, locale: Locale = .autoupdatingCurrent) -> String {
+        let u = code.uppercased()
+        guard let a = byCode[u] else { return u }
+
+        // Prefer metro city from CityIndex (e.g., BRU → Brussels)
+        let metro = cityIndex?.entry(forCityCode: a.cityCode)?.city
+
+        // Prefer country from the city entry if present (usually same as airport)
+        let countryCode = cityIndex?.entry(forCityCode: a.cityCode)?.countryCode ?? a.country
+        let country = CountryNamer.shared.name(for: countryCode, locale: locale)
+
+        let place = metro?.isEmpty == false ? metro! : (a.city.isEmpty ? a.name : a.city)
+        return "\(u) — \(place), \(country)"
+    }
+
+    /// Returns the metro city name (from CityCodes_full.plist) for an airport code, if available.
+    func metroCity(for code: String) -> String? {
+        guard let a = byCode[code.uppercased()] else { return nil }
+        return cityIndex?.entry(forCityCode: a.cityCode)?.city
+    }
+
+    /// Returns the localized country name for the airport code, preferring the city index country.
+    func countryName(for code: String, locale: Locale = .autoupdatingCurrent) -> String? {
+        let u = code.uppercased()
+        guard let a = byCode[u] else { return nil }
+        let countryCode = cityIndex?.entry(forCityCode: a.cityCode)?.countryCode ?? a.country
+        return CountryNamer.shared.name(for: countryCode, locale: locale)
+    }
+
+    /// Direct access to the underlying airport record.
+    func airport(for code: String) -> AirportLite? {
+        byCode[code.uppercased()]
+    }
+
+    // MARK: - Loading
+
+    private static func loadAirports(from bundle: Bundle) -> [String: AirportLite] {
+        guard let url = bundle.url(forResource: "airports_compact", withExtension: "plist") else {
+            assertionFailure("airports_compact.plist not found in bundle")
+            return [:]
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            // The plist file is a dictionary: [code: AirportLite]
+            let decoded = try PropertyListDecoder().decode([String: AirportLite].self, from: data)
+            // Normalize keys to uppercased for consistent lookup
+            var norm: [String: AirportLite] = [:]
+            norm.reserveCapacity(decoded.count)
+            for (k, v) in decoded {
+                norm[k.uppercased()] = v
+            }
+            return norm
+        } catch {
+            assertionFailure("Failed to decode airports_compact.plist: \(error)")
+            return [:]
+        }
     }
 }

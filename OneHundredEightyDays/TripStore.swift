@@ -10,10 +10,14 @@ import CoreData
 import BoardingPassKit
 
 /// Central place to persist trips to Core Data (TripEntity).
-/// Uses AirportData to show "City, Country" from IATA/city codes.
+/// Uses AirportLookup to show "CODE — City, Country" from IATA/city codes,
+/// resolving the *metro city* (e.g., BRU → Brussels, not Zaventem).
 enum TripStoreError: Error { case saveFailed }
 
 struct TripStore {
+
+    // Airport/City lookup (immutable, thread-safe)
+    private static let airportLookup = AirportLookup()
 
     /// Save from your manual BCBP parser.
     @discardableResult
@@ -21,6 +25,7 @@ struct TripStore {
                              imageData: Data?,
                              in context: NSManagedObjectContext) throws -> TripEntity {
         try saveCommon(
+            passengerName: bc.name,  // Add passenger name from your BCBP parser
             airline: bc.operatingCarrier,
             originCode: bc.origin,
             destCode: bc.destination,
@@ -37,6 +42,7 @@ struct TripStore {
                                      imageData: Data?,
                                      in context: NSManagedObjectContext) throws -> TripEntity {
         try saveCommon(
+            passengerName: pass.info.name, // Add passenger name from BoardingPassKit
             airline: pass.info.operatingCarrier,
             originCode: pass.info.origin,
             destCode: pass.info.destination,
@@ -50,7 +56,8 @@ struct TripStore {
     // MARK: - Shared write path
 
     @discardableResult
-    private static func saveCommon(airline: String,
+    private static func saveCommon(passengerName: String?,
+                                   airline: String,
                                    originCode: String,
                                    destCode: String,
                                    flightNumber: String,
@@ -65,9 +72,13 @@ struct TripStore {
         context.performAndWait {
             let trip = TripEntity(context: context)
             trip.id = UUID()
+            trip.passenger = passengerName // ✅ Store passenger name
             trip.airline = airline
-            trip.departureCity = AirportData.shared.displayName(forCode: originCode)
-            trip.arrivalCity   = AirportData.shared.displayName(forCode: destCode)
+
+            // Metro-city aware display names (e.g., "BRU — Brussels, Belgium")
+            trip.departureCity = airportLookup.displayName(for: originCode)
+            trip.arrivalCity   = airportLookup.displayName(for: destCode)
+
             trip.flightNumber  = flightNumber
             trip.travelDate    = travelDate
             trip.imageData     = imageData

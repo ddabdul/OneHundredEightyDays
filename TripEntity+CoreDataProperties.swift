@@ -18,6 +18,7 @@ extension TripEntity {
 
     @NSManaged public var id: UUID?
     @NSManaged public var departureCity: String?
+    @NSManaged public var passenger: String?
     @NSManaged public var arrivalCity: String?
     @NSManaged public var travelDate: Date?
     @NSManaged public var airline: String?
