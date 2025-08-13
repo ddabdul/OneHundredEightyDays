@@ -64,7 +64,7 @@ struct BoardingPassImporter: View {
         }
         
         // Parse the BCBP string
-        let bc = try parseBCBP(payload)
+        _ = try parseBCBP(payload)
         
     }
 }

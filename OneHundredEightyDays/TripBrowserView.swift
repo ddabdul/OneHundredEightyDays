@@ -155,17 +155,6 @@ private struct TripCard: View {
                 Text(formattedDate(trip.travelDate))
                     .foregroundStyle(.secondary)
             }
-
-            Divider().padding(.vertical, 6)
-
-            // Details table
-            DetailRow(label: "Airline",  value: trip.airline)
-            DetailRow(label: "Flight No.", value: trip.flightNumber)
-            DetailRow(label: "From", value: trip.departureCity)
-            DetailRow(label: "To", value: trip.arrivalCity)
-            DetailRow(label: "Date", value: formattedDate(trip.travelDate))
-
-            Spacer(minLength: 0)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
