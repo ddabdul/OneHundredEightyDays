@@ -1,95 +1,196 @@
+//
 //  TripStore.swift
 //  OneHundredEightyDays
 //
-//  Single canonical save entry point.
-//  - departureCity / arrivalCity: metro city names (e.g., BRU -> "Brussels").
-//  - travel date: derived from julianDate if provided, otherwise you can pass nil.
+//  Created by Olivier on 11/08/2025.
 //
 
 import Foundation
 import CoreData
-import BoardingPassKit
+import os
 
-enum TripStoreError: Error { case saveFailed }
+/// Post this notification to warn the user that the trip already exists.
+/// Observe it in SwiftUI and show an alert/snackbar.
+extension Notification.Name {
+    static let tripDuplicateDetected = Notification.Name("TripStoreDuplicateDetected")
+}
+
+/// Central place to persist trips to Core Data (TripEntity).
+/// Uses AirportLookup to show "CODE — City, Country" from IATA/city codes,
+/// resolving the *metro city* (e.g., BRU → Brussels, not Zaventem).
+enum TripStoreError: Error { case saveFailed(Error) }
 
 struct TripStore {
 
-    /// Immutable, thread-safe lookup that resolves IATA → metro city.
+    // MARK: - Setup
+
+    /// Airport/City lookup (immutable, thread-safe)
     private static let airportLookup = AirportLookup()
+    private static let log = Logger(subsystem: "OneHundredEightyDays", category: "TripStore")
 
-    /// The ONLY save function.
-    /// Call this for every source (BCBP, BoardingPassKit, manual).
-    ///
+    // MARK: - Public API
+
+    /// Single save entry-point used by the whole app.
+    /// - Important: Requires a `naturalKey: String` attribute on TripEntity (unique constraint recommended).
     /// - Parameters:
-    ///   - airline: Operating carrier code (e.g., "SN").
-    ///   - originCode: IATA airport code of departure (e.g., "BRU").
-    ///   - destCode: IATA airport code of destination (e.g., "HAM").
-    ///   - flightNumber: Numeric/alpha flight number.
-    ///   - julianDate: Optional julian day. If non-nil, will be converted to Date.
-    ///   - passenger: Optional passenger full name ("First Last").
-    ///   - imageData: Optional raw image data of the boarding-pass photo.
-    ///   - context: Core Data context to write into.
+    ///   - airline: Operating carrier (e.g., "SN")
+    ///   - originCode: IATA airport code
+    ///   - destCode: IATA airport code
+    ///   - flightNumber: "1234" (do not include airline code)
+    ///   - julianDate: IATA BCBP julian day-of-year
+    ///   - passenger: Full passenger name (first + family) as printed
+    ///   - imageData: Original PNG/JPEG of the boarding pass (optional)
+    ///   - context: NSManagedObjectContext to write into
+    /// - Returns: The `TripEntity` (existing if duplicate, or newly inserted/updated)
     @discardableResult
-    static func saveTrip(airline: String,
-                         originCode: String,
-                         destCode: String,
-                         flightNumber: String,
-                         julianDate: Int?,
-                         passenger: String?,
-                         imageData: Data?,
-                         in context: NSManagedObjectContext) throws -> TripEntity {
+    static func saveTrip(
+        airline: String,
+        originCode: String,
+        destCode: String,
+        flightNumber: String,
+        julianDate: Int,
+        passenger: String,
+        imageData: Data?,
+        in context: NSManagedObjectContext
+    ) throws -> TripEntity {
 
-        // Compute date from julian if available
-        let computedDate = julianDate.flatMap { dateFromJulian($0) }
+        // Resolve travel date (day precision)
+        let date = dateFromJulian(julianDate) ?? Date()
+        let day   = Calendar.current.startOfDay(for: date)
 
-        var capturedError: Error?
+        // Build normalized natural key (AIRLINE|FLIGHT|YYYY-MM-DD|PASSENGER)
+        let key = normalizedKey(
+            airline: airline,
+            flightNumber: flightNumber,
+            travelDate: day,
+            passenger: passenger
+        )
+
+        // Generate user-facing display values (metro city aware)
+        let departDisplay = airportLookup.displayName(for: originCode)
+        let arriveDisplay = airportLookup.displayName(for: destCode)
+
         var saved: TripEntity!
+        var captured: Error?
 
+        // Respect the context’s queue
         context.performAndWait {
+            // 1) Check for an existing trip with the same natural key
+            let req: NSFetchRequest<TripEntity> = TripEntity.fetchRequest()
+            req.fetchLimit = 1
+            req.predicate = NSPredicate(format: "naturalKey == %@", key)
+
+            let existing = (try? context.fetch(req))?.first
+
+            // 2) If it exists, update a couple of fields (non-destructive), notify UI, and return it
+            if let trip = existing {
+                // Non-destructive refresh: keep latest picture if we just scanned one
+                if let imageData, (trip.imageData == nil || (trip.imageData?.isEmpty == true)) {
+                    trip.imageData = imageData
+                }
+                // Keep text fields in sync in case airport/city tables got updated
+                trip.departureCity = departDisplay
+                trip.arrivalCity   = arriveDisplay
+
+                do {
+                    try context.save()
+                    saved = trip
+                    postDuplicateWarning(for: trip)
+                } catch {
+                    captured = error
+                }
+                return
+            }
+
+            // 3) Otherwise, insert a brand new TripEntity
             let trip = TripEntity(context: context)
-            trip.id = UUID()
-            trip.airline = airline
-            trip.flightNumber = flightNumber
-            trip.travelDate = computedDate
-            trip.passenger = passenger?.trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // Store METRO CITY NAMES only (e.g., "Brussels", "Hamburg")
-            trip.departureCity = metroCityName(for: originCode)
-            trip.arrivalCity   = metroCityName(for: destCode)
-
-            // Keep the photo (if any)
-            trip.imageData = imageData
+            trip.id            = UUID()
+            trip.naturalKey    = key
+            trip.airline       = airline
+            trip.flightNumber  = flightNumber
+            trip.travelDate    = day
+            trip.passenger     = passenger
+            trip.departureCity = departDisplay
+            trip.arrivalCity   = arriveDisplay
+            trip.imageData     = imageData
 
             do {
                 try context.save()
                 saved = trip
             } catch {
-                capturedError = error
+                captured = error
             }
         }
 
-        if let err = capturedError { throw err }
+        if let err = captured {
+            throw TripStoreError.saveFailed(err)
+        }
         return saved
     }
 
     // MARK: - Helpers
 
-    /// Returns the metro city name for an airport code.
-    /// Falls back to airport's municipality (or airport name) when the city index is missing.
-    private static func metroCityName(for code: String) -> String {
-        let u = code.uppercased()
-
-        if let metro = airportLookup.metroCity(for: u), !metro.isEmpty {
-            return metro
+    /// Build a normalized natural key using **Airline + Flight Number + Travel Day + Passenger**.
+    /// - Travel day is normalized to UTC "yyyy-MM-dd" to avoid TZ issues.
+    private static func normalizedKey(
+        airline: String,
+        flightNumber: String,
+        travelDate: Date,
+        passenger: String
+    ) -> String {
+        func norm(_ s: String) -> String {
+            s.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         }
+        // Day-precision, UTC, stable across devices
+        let df = DateFormatter()
+        df.calendar = Calendar(identifier: .gregorian)
+        df.timeZone = TimeZone(secondsFromGMT: 0)
+        df.dateFormat = "yyyy-MM-dd"
+        let day = df.string(from: travelDate)
 
-        if let a = airportLookup.airport(for: u) {
-            // If airport's `city` is empty, fall back to airport name.
-            let municipal = a.city.isEmpty ? a.name : a.city
-            return municipal
+        return [
+            norm(airline),
+            norm(flightNumber),
+            day,
+            norm(passenger)
+        ].joined(separator: "|")
+    }
+
+    /// Convert IATA julian day to Date in the current year (day precision).
+    private static func dateFromJulian(
+        _ dayOfYear: Int,
+        year: Int = Calendar.current.component(.year, from: Date())
+    ) -> Date? {
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = 1
+        comps.day = 1
+        let cal = Calendar(identifier: .gregorian)
+        guard let jan1 = cal.date(from: comps) else { return nil }
+        return cal.date(byAdding: .day, value: dayOfYear - 1, to: jan1).map {
+            cal.startOfDay(for: $0)
         }
+    }
 
-        // Last resort: store the raw code so the UI shows *something*
-        return u
+    /// Posts a UI-facing warning (duplicate detected).
+    /// Listen for `.tripDuplicateDetected` in SwiftUI and present an alert/snackbar.
+    private static func postDuplicateWarning(for trip: TripEntity) {
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .none
+
+        let msg = """
+        Trip already exists:
+        \(trip.airline ?? "—") \(trip.flightNumber ?? "—") on \(trip.travelDate.map(df.string(from:)) ?? "—")
+        Passenger: \(trip.passenger ?? "—")
+        """
+
+        log.notice("Duplicate trip detected: \(msg, privacy: .public)")
+
+        NotificationCenter.default.post(
+            name: .tripDuplicateDetected,
+            object: nil,
+            userInfo: ["message": msg]
+        )
     }
 }

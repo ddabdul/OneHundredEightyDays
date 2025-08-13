@@ -136,14 +136,14 @@ private struct TripCard: View {
             // Route (stored as “CODE — City, Country” already)
             if let from = trip.departureCity {
                 HStack(spacing: 8) {
-                    Image(systemName: "mappin.and.ellipse")
+                    Image(systemName: "airplane.departure")
                     Text(from)
                         .font(.title3.weight(.semibold))
                 }
             }
             if let to = trip.arrivalCity {
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.right")
+                    Image(systemName: "airplane.arrival")
                     Text(to)
                         .font(.title3.weight(.semibold))
                 }
