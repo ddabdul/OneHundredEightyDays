@@ -1,11 +1,3 @@
-//
-//  TripBrowserView.swift
-//  OneHundredEightyDays
-//
-//  Created by Olivier on 11/08/2025.
-//
-
-
 // TripBrowserView.swift
 
 import SwiftUI
@@ -26,6 +18,7 @@ struct TripBrowserView: View {
 
     @State private var selection: Int = 0
     @State private var confirmDelete = false
+    @State private var fullScreenPhotoData: Data?        // << for the sheet
 
     var body: some View {
         VStack {
@@ -36,14 +29,15 @@ struct TripBrowserView: View {
             } else {
                 TabView(selection: $selection) {
                     ForEach(Array(trips.enumerated()), id: \.element.objectID) { index, trip in
-                        TripCard(trip: trip)
-                            .padding(.horizontal)
-                            .tag(index)
+                        TripCard(trip: trip) { data in
+                            fullScreenPhotoData = data
+                        }
+                        .padding(.horizontal)
+                        .tag(index)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .automatic))
 
-                // simple page indicator text (optional)
                 Text("\(selection + 1) / \(trips.count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -71,6 +65,17 @@ struct TripBrowserView: View {
                 Text("\(t.airline ?? "") \(t.flightNumber ?? "") on \(formattedDate(t.travelDate))")
             }
         }
+        .fullScreenCover(item: Binding(
+            get: {
+                // Wrap in an Identifiable helper so we can use fullScreenCover(item:)
+                fullScreenPhotoData.map { IdentData(id: UUID(), data: $0) }
+            },
+            set: { ident in
+                fullScreenPhotoData = ident?.data
+            })
+        ) { ident in
+            FullscreenImageView(data: ident.data)
+        }
     }
 
     private var currentTrip: TripEntity? {
@@ -82,41 +87,83 @@ struct TripBrowserView: View {
         guard let t = currentTrip else { return }
         ctx.delete(t)
         do { try ctx.save() } catch { print("Delete failed:", error) }
-        // Adjust selection if we deleted the last page
         if selection >= max(trips.count - 1, 0) {
             selection = max(trips.count - 1, 0)
         }
     }
 }
 
+// MARK: - Card
+
 private struct TripCard: View {
     let trip: TripEntity
+    var onPhotoTap: (Data) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Photo (if you saved imageData)
-            if let data = trip.imageData, let ui = UIImage(data: data) {
+
+            // Photo (tappable → fullscreen)
+            if let data = trip.imageData,
+               let ui = UIImage(data: data) {
                 Image(uiImage: ui)
                     .resizable()
                     .scaledToFill()
-                    .frame(height: 180)
+                    .frame(height: 200)
                     .clipped()
-                    .cornerRadius(10)
+                    .cornerRadius(12)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onPhotoTap(data) }
             }
 
+            // Top row: airline + flight number
             HStack {
-                Text(trip.airline ?? "—")
+                Label(trip.airline ?? "—", systemImage: "airplane")
                     .font(.headline)
                 Spacer()
                 Text(trip.flightNumber ?? "—")
                     .font(.headline)
             }
 
-            Text("\(trip.departureCity ?? "—")  →  \(trip.arrivalCity ?? "—")")
-                .font(.title3.weight(.semibold))
+            // Passenger
+            if let p = trip.passenger, !p.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "person")
+                    Text(p)
+                }
+                .accessibilityLabel("Passenger \(trip.passenger ?? "")")
+            }
 
-            Text(formattedDate(trip.travelDate))
-                .foregroundStyle(.secondary)
+            // Route (stored as “CODE — City, Country” already)
+            if let from = trip.departureCity {
+                HStack(spacing: 8) {
+                    Image(systemName: "mappin.and.ellipse")
+                    Text(from)
+                        .font(.title3.weight(.semibold))
+                }
+            }
+            if let to = trip.arrivalCity {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.right")
+                    Text(to)
+                        .font(.title3.weight(.semibold))
+                }
+            }
+
+            // Date
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                Text(formattedDate(trip.travelDate))
+                    .foregroundStyle(.secondary)
+            }
+
+            Divider().padding(.vertical, 6)
+
+            // Details table
+            DetailRow(label: "Airline",  value: trip.airline)
+            DetailRow(label: "Flight No.", value: trip.flightNumber)
+            DetailRow(label: "From", value: trip.departureCity)
+            DetailRow(label: "To", value: trip.arrivalCity)
+            DetailRow(label: "Date", value: formattedDate(trip.travelDate))
 
             Spacer(minLength: 0)
         }
@@ -124,6 +171,89 @@ private struct TripCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
+}
+
+private struct DetailRow: View {
+    let label: String
+    let value: String?
+
+    var body: some View {
+        HStack {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            Text(value ?? "—")
+        }
+        .font(.body)
+    }
+}
+
+// MARK: - Fullscreen photo
+
+private struct FullscreenImageView: View {
+    @Environment(\.dismiss) private var dismiss
+    let data: Data
+
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+
+    var body: some View {
+        Group {
+            if let ui = UIImage(data: data) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFit()
+                    .scaleEffect(scale)
+                    .offset(offset)
+                    .gesture(MagnificationGesture()
+                        .onChanged { value in
+                            scale = max(1, lastScale * value)
+                        }
+                        .onEnded { _ in
+                            lastScale = scale
+                        }
+                    )
+                    .gesture(DragGesture()
+                        .onChanged { value in
+                            offset = CGSize(width: lastOffset.width + value.translation.width,
+                                            height: lastOffset.height + value.translation.height)
+                        }
+                        .onEnded { _ in
+                            lastOffset = offset
+                        }
+                    )
+                    .background(Color.black.ignoresSafeArea())
+                    .overlay(alignment: .topTrailing) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding()
+                        }
+                    }
+            } else {
+                // If the data somehow can't form an image, show a friendly fallback
+                VStack(spacing: 12) {
+                    Image(systemName: "photo")
+                        .font(.largeTitle)
+                    Text("Unable to display image")
+                    Button("Close") { dismiss() }
+                }
+                .padding()
+                .background(Color(.systemBackground))
+            }
+        }
+        .background(Color.black.ignoresSafeArea())
+    }
+}
+
+// Helper for fullScreenCover(item:)
+private struct IdentData: Identifiable {
+    let id: UUID
+    let data: Data
 }
 
 // MARK: - Helpers
