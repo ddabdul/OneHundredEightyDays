@@ -9,8 +9,9 @@ import Foundation
 import CoreData
 import os
 
-/// Post this notification to warn the user that the trip already exists.
-/// Observe it in SwiftUI and show an alert/snackbar.
+// MARK: - Notification Name
+
+/// Post this when a duplicate trip is detected. Listen at the app root to show a global warning.
 extension Notification.Name {
     static let tripDuplicateDetected = Notification.Name("TripStoreDuplicateDetected")
 }
@@ -82,20 +83,27 @@ struct TripStore {
 
             let existing = (try? context.fetch(req))?.first
 
-            // 2) If it exists, update a couple of fields (non-destructive), notify UI, and return it
+            // 2) If it exists, update a couple of fields (non-destructive) and return it
             if let trip = existing {
-                // Non-destructive refresh: keep latest picture if we just scanned one
                 if let imageData, (trip.imageData == nil || (trip.imageData?.isEmpty == true)) {
                     trip.imageData = imageData
                 }
-                // Keep text fields in sync in case airport/city tables got updated
                 trip.departureCity = departDisplay
                 trip.arrivalCity   = arriveDisplay
 
                 do {
                     try context.save()
                     saved = trip
-                    postDuplicateWarning(for: trip)
+
+                    // Keep internal logging
+                    log.notice("Duplicate trip detected: \(tripDescription(trip), privacy: .public)")
+
+                    // Post a global UI notification so any screen can react (e.g., show toast/banner)
+                    NotificationCenter.default.post(
+                        name: .tripDuplicateDetected,
+                        object: nil,
+                        userInfo: ["message": tripDescription(trip)]
+                    )
                 } catch {
                     captured = error
                 }
@@ -130,6 +138,16 @@ struct TripStore {
 
     // MARK: - Helpers
 
+    private static func tripDescription(_ trip: TripEntity) -> String {
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .none
+        return """
+        \(trip.airline ?? "—") \(trip.flightNumber ?? "—") on \(trip.travelDate.map(df.string(from:)) ?? "—")
+        Passenger: \(trip.passenger ?? "—")
+        """
+    }
+
     /// Build a normalized natural key using **Airline + Flight Number + Travel Day + Passenger**.
     /// - Travel day is normalized to UTC "yyyy-MM-dd" to avoid TZ issues.
     private static func normalizedKey(
@@ -141,7 +159,6 @@ struct TripStore {
         func norm(_ s: String) -> String {
             s.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         }
-        // Day-precision, UTC, stable across devices
         let df = DateFormatter()
         df.calendar = Calendar(identifier: .gregorian)
         df.timeZone = TimeZone(secondsFromGMT: 0)
@@ -170,27 +187,5 @@ struct TripStore {
         return cal.date(byAdding: .day, value: dayOfYear - 1, to: jan1).map {
             cal.startOfDay(for: $0)
         }
-    }
-
-    /// Posts a UI-facing warning (duplicate detected).
-    /// Listen for `.tripDuplicateDetected` in SwiftUI and present an alert/snackbar.
-    private static func postDuplicateWarning(for trip: TripEntity) {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .none
-
-        let msg = """
-        Trip already exists:
-        \(trip.airline ?? "—") \(trip.flightNumber ?? "—") on \(trip.travelDate.map(df.string(from:)) ?? "—")
-        Passenger: \(trip.passenger ?? "—")
-        """
-
-        log.notice("Duplicate trip detected: \(msg, privacy: .public)")
-
-        NotificationCenter.default.post(
-            name: .tripDuplicateDetected,
-            object: nil,
-            userInfo: ["message": msg]
-        )
     }
 }

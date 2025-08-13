@@ -1,4 +1,8 @@
 // TripBrowserView.swift
+//  OneHundredEightyDays
+//
+//  Created by Olivier on 03/08/2025.
+//
 
 import SwiftUI
 import CoreData
