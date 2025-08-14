@@ -18,13 +18,17 @@ struct PhotoQRCodeReader: View {
     @State private var boardingPass: BoardingPass?
     @State private var errorMessage: String?
 
+    @State private var showCamera = false
+    @State private var showNoCameraAlert = false
+
     // Use the unified lookup that also reads CityCodes_full.plist
     private static let airportLookup = AirportLookup()
 
     var body: some View {
         VStack(spacing: 20) {
+            // --- Import from Library ---
             PhotosPicker(
-                "Select Boarding-Pass Photo",
+                "Import from Photos",
                 selection: $pickerItem,
                 matching: .images
             )
@@ -32,8 +36,30 @@ struct PhotoQRCodeReader: View {
             .onChange(of: pickerItem) { oldItem, newItem in
                 Task { await loadImageAndProcess(from: newItem) }
             }
+            .buttonStyle(.bordered)
+
+            // --- Take Photo with Camera ---
+            Button {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    showCamera = true
+                } else {
+                    showNoCameraAlert = true
+                }
+            } label: {
+                Label("Take Photo", systemImage: "camera")
+            }
             .buttonStyle(.borderedProminent)
-            .padding(.top)
+            .sheet(isPresented: $showCamera) {
+                CameraPicker { image in
+                    Task { await handleCaptured(image) }
+                }
+                .ignoresSafeArea()
+            }
+            .alert("Camera Unavailable", isPresented: $showNoCameraAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("This device doesn’t have a camera or it’s not available.")
+            }
 
             if let img = uiImage {
                 Image(uiImage: img)
@@ -117,4 +143,70 @@ struct PhotoQRCodeReader: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    private func handleCaptured(_ image: UIImage) async {
+        boardingPass = nil
+        errorMessage = nil
+        uiImage = image
+
+        do {
+            // Prefer JPEG; fall back to PNG if needed
+            let data = image.jpegData(compressionQuality: 0.95) ?? image.pngData()
+            guard let rawData = data else {
+                throw NSError(domain: "", code: -2,
+                              userInfo: [NSLocalizedDescriptionKey: "Failed to encode captured photo"])
+            }
+
+            let pass = try await BoardingPassService.process(
+                image: image,
+                rawData: rawData,
+                in: viewContext
+            )
+            boardingPass = pass
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }
+
+// MARK: - Camera Picker (UIKit bridge)
+
+private struct CameraPicker: UIViewControllerRepresentable {
+    var onImage: (UIImage) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImage: onImage)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.allowsEditing = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let onImage: (UIImage) -> Void
+
+        init(onImage: @escaping (UIImage) -> Void) {
+            self.onImage = onImage
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController,
+                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            defer { picker.dismiss(animated: true) }
+            if let img = info[.originalImage] as? UIImage {
+                onImage(img)
+            }
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
