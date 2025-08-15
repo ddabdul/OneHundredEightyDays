@@ -23,6 +23,7 @@ struct OneHundredEightyDaysApp: App {
 
 struct HomeView: View {
     @State private var showTrips = false
+    @State private var showDaysByCountry = false
 
     var body: some View {
         NavigationStack {
@@ -32,21 +33,33 @@ struct HomeView: View {
             }
             .navigationTitle("Import Boarding Pass")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
                         showTrips = true
                     } label: {
                         Label("Trips", systemImage: "airplane")
                     }
+                    Button {
+                        showDaysByCountry = true
+                    } label: {
+                        Label("Days by Country", systemImage: "calendar.badge.clock")
+                    }
                 }
             }
+            // Trips sheet
             .sheet(isPresented: $showTrips) {
-                // Wrap sheet content too, so the toast also appears when a sheet is on top
                 NavigationStack {
                     GlobalToastOverlay {
                         TripBrowserView()
                             .navigationTitle("Saved Trips")
                     }
+                }
+            }
+            // Days-by-country sheet
+            .sheet(isPresented: $showDaysByCountry) {
+                NavigationStack {
+                    PassengerDaysByCountryView()
+                        .navigationTitle("Days by Country")
                 }
             }
         }
@@ -80,15 +93,9 @@ private struct GlobalToastOverlay<Content: View>: View {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isShowingToast = true
                 }
-
-                // Optional: light haptic feedback
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-
-                // Auto-dismiss after 3 seconds
+                UIImpactFeedbackGenerator(style: .light).impactOccurred() // optional haptic
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        isShowingToast = false
-                    }
+                    withAnimation(.easeInOut(duration: 0.25)) { isShowingToast = false }
                 }
             }
     }
