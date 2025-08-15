@@ -115,6 +115,8 @@ struct TripStore {
             trip.departureCountry = departISO        // NEW
             trip.arrivalCountry   = arriveISO        // NEW
             trip.imageData        = imageData
+            trip.arrivalAirportCode = destCode
+            trip.departureAirportCode = originCode
 
             do {
                 try context.save()

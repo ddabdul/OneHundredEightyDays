@@ -26,6 +26,8 @@ extension TripEntity {
     @NSManaged public var travelDate: Date?
     @NSManaged public var airline: String?
     @NSManaged public var flightNumber: String?
+    @NSManaged public var departureAirportCode: String?
+    @NSManaged public var arrivalAirportCode: String?
     @NSManaged public var imageData: Data?
 
 }

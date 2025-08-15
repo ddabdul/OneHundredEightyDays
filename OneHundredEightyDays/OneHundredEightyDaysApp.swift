@@ -24,10 +24,10 @@ struct OneHundredEightyDaysApp: App {
 struct HomeView: View {
     @State private var showTrips = false
     @State private var showDaysByCountry = false
+    @State private var showAddManualTrip = false // NEW
 
     var body: some View {
         NavigationStack {
-            // Wrap root content so the toast can appear above it
             GlobalToastOverlay {
                 PhotoQRCodeReader()
             }
@@ -44,6 +44,12 @@ struct HomeView: View {
                     } label: {
                         Label("Days by Country", systemImage: "calendar.badge.clock")
                     }
+                    Button { // NEW
+                        showAddManualTrip = true
+                    } label: {
+                        Label("Add Trip", systemImage: "plus")
+                    }
+                    .accessibilityLabel("Add Trip Manually")
                 }
             }
             // Trips sheet
@@ -62,9 +68,17 @@ struct HomeView: View {
                         .navigationTitle("Days by Country")
                 }
             }
+            // Manual add sheet
+            .sheet(isPresented: $showAddManualTrip) {
+                NavigationStack {
+                    AddManualTripView() // ← your manual entry form
+                        .navigationTitle("Add Trip")
+                }
+            }
         }
     }
 }
+
 
 // MARK: - Global Toast Overlay
 

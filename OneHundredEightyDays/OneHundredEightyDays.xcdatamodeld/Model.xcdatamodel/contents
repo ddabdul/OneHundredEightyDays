@@ -2,8 +2,10 @@
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="23788.4" systemVersion="24G84" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
     <entity name="TripEntity" representedClassName="TripEntity" syncable="YES">
         <attribute name="airline" optional="YES" attributeType="String"/>
+        <attribute name="arrivalAirportCode" optional="YES" attributeType="String"/>
         <attribute name="arrivalCity" attributeType="String"/>
         <attribute name="arrivalCountry" optional="YES" attributeType="String"/>
+        <attribute name="departureAirportCode" optional="YES" attributeType="String"/>
         <attribute name="departureCity" attributeType="String"/>
         <attribute name="departureCountry" optional="YES" attributeType="String"/>
         <attribute name="flightNumber" optional="YES" attributeType="String"/>
