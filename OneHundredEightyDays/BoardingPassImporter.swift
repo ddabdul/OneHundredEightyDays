@@ -1,10 +1,11 @@
-//
 //  BoardingPassImporter.swift
 //  OneHundredEightyDays
 //
 
 import SwiftUI
 import PhotosUI
+import CoreData
+import UIKit
 
 struct BoardingPassImporter: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -28,43 +29,38 @@ struct BoardingPassImporter: View {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFit()
-                    .frame(maxHeight: 200)
+                    .frame(maxHeight: 220)
+                    .cornerRadius(8)
             }
             
             if let error = errorMessage {
                 Text(error)
                     .foregroundColor(.red)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal)
             }
         }
         .padding()
     }
     
-    /// Load the picked photo into a UIImage
+    /// Load the picked photo into a UIImage and process via BoardingPassService
     private func loadImage(from item: PhotosPickerItem?) async {
-        guard let item = item else { return }
+        guard let item else { return }
+        errorMessage = nil
         do {
             if let data = try await item.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
                 uiImage = image
-                try await processBoardingPass(image: image, rawData: data)
+                _ = try await BoardingPassService.process(
+                    image: image,
+                    rawData: data,
+                    in: viewContext
+                )
             } else {
                 errorMessage = "Failed to load image data."
             }
         } catch {
-            errorMessage = "Error loading image: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
-    }
-    
-    /// Decode the barcode, parse BCBP, and save with City + Country names
-    private func processBoardingPass(image: UIImage, rawData: Data) async throws {
-        guard let payload = try await detectBarcode(in: image) else {
-            throw NSError(domain: "", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "No barcode found"])
-        }
-        
-        // Parse the BCBP string
-        _ = try parseBCBP(payload)
-        
     }
 }
