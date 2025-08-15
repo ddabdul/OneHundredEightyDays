@@ -10,16 +10,18 @@ struct AddManualTripView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
 
-    private static let lookup = AirportLookup() // for hints
+    private static let lookup = AirportLookup()
 
-    @State private var passenger: String = ""
-    @State private var airline: String = ""
-    @State private var flightNumber: String = ""
-    @State private var originCode: String = ""
-    @State private var destCode: String = ""
+    @State private var passenger = ""
+    @State private var airline = ""
+    @State private var flightNumber = ""
+    @State private var originCode = ""
+    @State private var destCode = ""
     @State private var travelDate: Date = .now
-
     @State private var errorMessage: String?
+
+    enum Field { case passenger, airline, flight, origin, dest }
+    @FocusState private var focus: Field?
 
     private var canSave: Bool {
         !airline.trimmed.isEmpty &&
@@ -35,24 +37,59 @@ struct AddManualTripView: View {
                 Section("Traveler") {
                     TextField("Passenger name", text: $passenger)
                         .textContentType(.name)
-                        .autocapitalization(.words)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.next)
+                        .focused($focus, equals: .passenger)
+                        .onSubmit { focus = .airline }
                 }
 
                 Section("Flight") {
-                    TextField("Airline code (e.g. SN)", text: $airline)
-                        .textInputAutocapitalization(.characters)
-                    TextField("Flight number (e.g. 1234)", text: $flightNumber)
-                        .textInputAutocapitalization(.characters)
-                        .keyboardType(.asciiCapableNumberPad)
+                    HidingAssistantTextField(
+                        text: $airline,
+                        placeholder: "Airline code (e.g. SN)",
+                        contentType: .flightNumber,
+                        capitalization: .allCharacters,
+                        keyboard: .asciiCapable,
+                        returnKey: .next,
+                        onReturn: { focus = .flight }
+                    )
+                    .frame(maxWidth: .infinity)
+
+                    HidingAssistantTextField(
+                        text: $flightNumber,
+                        placeholder: "Flight number (e.g. 1234)",
+                        contentType: .flightNumber,
+                        capitalization: .allCharacters,
+                        keyboard: .asciiCapableNumberPad,
+                        returnKey: .next,
+                        onReturn: { focus = .origin }
+                    )
+                    .frame(maxWidth: .infinity)
                 }
 
                 Section("Route") {
-                    TextField("Origin IATA (e.g. BRU)", text: $originCode)
-                        .textInputAutocapitalization(.characters)
+                    HidingAssistantTextField(
+                        text: $originCode,
+                        placeholder: "Origin IATA (e.g. BRU)",
+                        contentType: .location,
+                        capitalization: .allCharacters,
+                        keyboard: .asciiCapable,
+                        returnKey: .next,
+                        onReturn: { focus = .dest }
+                    )
+                    .frame(maxWidth: .infinity)
                     hint(for: originCode)
 
-                    TextField("Destination IATA (e.g. LHR)", text: $destCode)
-                        .textInputAutocapitalization(.characters)
+                    HidingAssistantTextField(
+                        text: $destCode,
+                        placeholder: "Destination IATA (e.g. LHR)",
+                        contentType: .location,
+                        capitalization: .allCharacters,
+                        keyboard: .asciiCapable,
+                        returnKey: .done,
+                        onReturn: { focus = nil }
+                    )
+                    .frame(maxWidth: .infinity)
                     hint(for: destCode)
 
                     DatePicker("Travel date", selection: $travelDate, displayedComponents: .date)
@@ -61,22 +98,31 @@ struct AddManualTripView: View {
                 if let err = errorMessage {
                     Section {
                         Text(err)
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Add Trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focus = nil                       // 1) end focus
+                        DispatchQueue.main.async {        // 2) dismiss next runloop
+                            dismiss()
+                        }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(!canSave)
                 }
             }
+        }
+        .onDisappear {
+            // Avoid forcing endEditing from here; the delayed dismiss handles teardown cleanly.
         }
     }
 
@@ -92,24 +138,24 @@ struct AddManualTripView: View {
 
     private func save() {
         errorMessage = nil
-
-        // Use the **bundled** icon for manual trips
-        let iconData = DefaultAssets.manualTripIconData
-
-        do {
-            _ = try TripStore.saveTrip(
-                airline: airline.trimmed.uppercased(),
-                originCode: originCode.trimmed.uppercased(),
-                destCode: destCode.trimmed.uppercased(),
-                flightNumber: flightNumber.trimmed.uppercased(),
-                julianDate: julianDay(of: travelDate),
-                passenger: passenger.trimmed,
-                imageData: iconData,
-                in: viewContext
-            )
-            dismiss()
-        } catch {
-            errorMessage = "Failed to save trip: \(error.localizedDescription)"
+        focus = nil
+        // Allow the input session to end *before* we dismiss & write
+        DispatchQueue.main.async {
+            do {
+                _ = try TripStore.saveTrip(
+                    airline: airline.trimmed.uppercased(),
+                    originCode: originCode.trimmed.uppercased(),
+                    destCode: destCode.trimmed.uppercased(),
+                    flightNumber: flightNumber.trimmed.uppercased(),
+                    julianDate: julianDay(of: travelDate),
+                    passenger: passenger.trimmed,
+                    imageData: DefaultAssets.manualTripIconData,
+                    in: viewContext
+                )
+                dismiss()
+            } catch {
+                errorMessage = "Failed to save trip: \(error.localizedDescription)"
+            }
         }
     }
 

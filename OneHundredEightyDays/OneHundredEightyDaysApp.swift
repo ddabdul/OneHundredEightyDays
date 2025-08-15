@@ -24,7 +24,7 @@ struct OneHundredEightyDaysApp: App {
 struct HomeView: View {
     @State private var showTrips = false
     @State private var showDaysByCountry = false
-    @State private var showAddManualTrip = false // NEW
+    @State private var showAddManualTrip = false
 
     var body: some View {
         NavigationStack {
@@ -35,16 +35,19 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
+                        UIApplication.shared.endEditing()      // NEW
                         showTrips = true
                     } label: {
                         Label("Trips", systemImage: "airplane")
                     }
                     Button {
+                        UIApplication.shared.endEditing()      // NEW
                         showDaysByCountry = true
                     } label: {
                         Label("Days by Country", systemImage: "calendar.badge.clock")
                     }
-                    Button { // NEW
+                    Button {
+                        UIApplication.shared.endEditing()      // NEW
                         showAddManualTrip = true
                     } label: {
                         Label("Add Trip", systemImage: "plus")
@@ -71,13 +74,16 @@ struct HomeView: View {
             // Manual add sheet
             .sheet(isPresented: $showAddManualTrip) {
                 NavigationStack {
-                    AddManualTripView() // ← your manual entry form
+                    AddManualTripView()
                         .navigationTitle("Add Trip")
                 }
             }
         }
+        // Helps in edge cases where UIKit wants extra room while animating the keyboard
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
+
 
 
 // MARK: - Global Toast Overlay
