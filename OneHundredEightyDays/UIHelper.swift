@@ -27,7 +27,8 @@ struct HidingAssistantTextField: UIViewRepresentable {
         }
 
         func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            onReturn?()
+            textField.resignFirstResponder()   // end first responder cleanly
+            onReturn?()                        // advance focus / custom action
             return true
         }
     }
@@ -41,9 +42,7 @@ struct HidingAssistantTextField: UIViewRepresentable {
     var font: UIFont = .preferredFont(forTextStyle: .body)
     var onReturn: (() -> Void)?
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onReturn: onReturn)
-    }
+    func makeCoordinator() -> Coordinator { .init(text: $text, onReturn: onReturn) }
 
     func makeUIView(context: Context) -> UITextField {
         let tf = UITextField(frame: .zero)
@@ -58,14 +57,12 @@ struct HidingAssistantTextField: UIViewRepresentable {
         tf.returnKeyType = returnKey
         tf.font = font
 
-        // *** Hide the system input assistant (QuickType toolbar) ***
+        // Hide the QuickType / input assistant bar
         let item = tf.inputAssistantItem
         item.leadingBarButtonGroups = []
         item.trailingBarButtonGroups = []
 
-        // Accessibility
         tf.accessibilityLabel = placeholder
-
         return tf
     }
 
@@ -76,11 +73,9 @@ struct HidingAssistantTextField: UIViewRepresentable {
         uiView.keyboardType = keyboard
         uiView.returnKeyType = returnKey
 
-        // Keep assistant hidden if UIKit reconfigures it
+        // Re-hide if UIKit reconfigures the assistant
         let item = uiView.inputAssistantItem
-        if !(item.leadingBarButtonGroups.isEmpty) || !(item.trailingBarButtonGroups.isEmpty) {
-            item.leadingBarButtonGroups = []
-            item.trailingBarButtonGroups = []
-        }
+        item.leadingBarButtonGroups = []
+        item.trailingBarButtonGroups = []
     }
 }
