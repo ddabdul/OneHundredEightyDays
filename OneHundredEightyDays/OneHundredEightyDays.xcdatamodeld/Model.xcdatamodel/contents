@@ -3,7 +3,9 @@
     <entity name="TripEntity" representedClassName="TripEntity" syncable="YES">
         <attribute name="airline" optional="YES" attributeType="String"/>
         <attribute name="arrivalCity" attributeType="String"/>
+        <attribute name="arrivalCountry" optional="YES" attributeType="String"/>
         <attribute name="departureCity" attributeType="String"/>
+        <attribute name="departureCountry" optional="YES" attributeType="String"/>
         <attribute name="flightNumber" optional="YES" attributeType="String"/>
         <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="imageData" optional="YES" attributeType="Binary"/>

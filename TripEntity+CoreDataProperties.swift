@@ -18,6 +18,8 @@ extension TripEntity {
 
     @NSManaged public var id: UUID?
     @NSManaged public var departureCity: String?
+    @NSManaged public var departureCountry: String?
+    @NSManaged public var arrivalCountry: String?
     @NSManaged public var passenger: String?
     @NSManaged public var naturalKey: String?
     @NSManaged public var arrivalCity: String?

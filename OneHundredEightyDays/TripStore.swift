@@ -71,6 +71,10 @@ struct TripStore {
         let departDisplay = airportLookup.displayName(for: originCode)
         let arriveDisplay = airportLookup.displayName(for: destCode)
 
+        // ISO 3166-1 alpha-2 country codes from AirportLite (uppercased for consistency)
+        let departISO = airportLookup.airport(for: originCode)?.country.uppercased() ?? ""
+        let arriveISO = airportLookup.airport(for: destCode)?.country.uppercased() ?? ""
+
         var saved: TripEntity!
         var captured: Error?
 
@@ -81,46 +85,36 @@ struct TripStore {
             req.fetchLimit = 1
             req.predicate = NSPredicate(format: "naturalKey == %@", key)
 
-            let existing = (try? context.fetch(req))?.first
+            _ = (try? context.fetch(req))?.first
 
-            // 2) If it exists, update a couple of fields (non-destructive) and return it
-            if let trip = existing {
-                if let imageData, (trip.imageData == nil || (trip.imageData?.isEmpty == true)) {
-                    trip.imageData = imageData
-                }
-                trip.departureCity = departDisplay
-                trip.arrivalCity   = arriveDisplay
+            if let trip = (try? context.fetch(req))?.first {
+                          // === DUPLICATE PATH ===
+                          // Per requirement: do not modify or save anything, just return the existing row.
+                          saved = trip
 
-                do {
-                    try context.save()
-                    saved = trip
-
-                    // Keep internal logging
-                    log.notice("Duplicate trip detected: \(tripDescription(trip), privacy: .public)")
-
-                    // Post a global UI notification so any screen can react (e.g., show toast/banner)
-                    NotificationCenter.default.post(
-                        name: .tripDuplicateDetected,
-                        object: nil,
-                        userInfo: ["message": tripDescription(trip)]
-                    )
-                } catch {
-                    captured = error
-                }
-                return
-            }
+                          // Optional: still emit a signal so the UI can show a toast/badge, etc. (no DB writes)
+                          log.notice("Duplicate trip detected: \(tripDescription(trip), privacy: .public)")
+                          NotificationCenter.default.post(
+                              name: .tripDuplicateDetected,
+                              object: nil,
+                              userInfo: ["message": tripDescription(trip)]
+                          )
+                          return
+                      }
 
             // 3) Otherwise, insert a brand new TripEntity
             let trip = TripEntity(context: context)
-            trip.id            = UUID()
-            trip.naturalKey    = key
-            trip.airline       = airline
-            trip.flightNumber  = flightNumber
-            trip.travelDate    = day
-            trip.passenger     = passenger
-            trip.departureCity = departDisplay
-            trip.arrivalCity   = arriveDisplay
-            trip.imageData     = imageData
+            trip.id               = UUID()
+            trip.naturalKey       = key
+            trip.airline          = airline
+            trip.flightNumber     = flightNumber
+            trip.travelDate       = day
+            trip.passenger        = passenger
+            trip.departureCity    = departDisplay
+            trip.arrivalCity      = arriveDisplay
+            trip.departureCountry = departISO        // NEW
+            trip.arrivalCountry   = arriveISO        // NEW
+            trip.imageData        = imageData
 
             do {
                 try context.save()

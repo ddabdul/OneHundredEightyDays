@@ -1,0 +1,826 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+  <!-- Fallback used when country code not found -->
+  <key>Default</key>
+  <dict>
+    <key>country_name</key><string>Default</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string> <!-- CALENDAR_YEAR | ROLLING_12_MONTHS | TAX_YEAR -->
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Generic OECD-style 183-day tax residence rule; calendar-year counting; conservative inclusion of arrival/departure and partial days.</string>
+  </dict>
+
+  <!-- EU-27 countries -->
+  <key>AT</key>
+  <dict>
+    <key>country_name</key><string>Austria</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Residence generally determined by habitual abode; treaty tie-breakers if dual resident.</string>
+  </dict>
+
+  <key>BE</key>
+  <dict>
+    <key>country_name</key><string>Belgium</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Uses centre-of-life factors alongside day count.</string>
+  </dict>
+
+  <key>BG</key>
+  <dict>
+    <key>country_name</key><string>Bulgaria</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Calendar-year basis; conservative counting.</string>
+  </dict>
+
+  <key>HR</key>
+  <dict>
+    <key>country_name</key><string>Croatia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Habitual abode and vital interests also relevant.</string>
+  </dict>
+
+  <key>CY</key>
+  <dict>
+    <key>country_name</key><string>Cyprus</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Also has a 60-day residence regime with conditions; 183 as standard rule.</string>
+  </dict>
+
+  <key>CZ</key>
+  <dict>
+    <key>country_name</key><string>Czechia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Permanent home/habitual abode tie-breakers apply.</string>
+  </dict>
+
+  <key>DK</key>
+  <dict>
+    <key>country_name</key><string>Denmark</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Residence may arise on acquiring a home and taking up residence.</string>
+  </dict>
+
+  <key>EE</key>
+  <dict>
+    <key>country_name</key><string>Estonia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Calendar-year residence test; conservative counting.</string>
+  </dict>
+
+  <key>FI</key>
+  <dict>
+    <key>country_name</key><string>Finland</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Broadly OECD-aligned; physical presence focus.</string>
+  </dict>
+
+  <key>FR</key>
+  <dict>
+    <key>country_name</key><string>France</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Alternative tests: main home, principal place of abode, principal professional activity, centre of economic interests.</string>
+  </dict>
+
+  <key>DE</key>
+  <dict>
+    <key>country_name</key><string>Germany</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Residence also triggered by owning a dwelling (Wohnsitz) and intent to keep/use it.</string>
+  </dict>
+
+  <key>GR</key>
+  <dict>
+    <key>country_name</key><string>Greece</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>OECD-aligned; conservative day counting.</string>
+  </dict>
+
+  <key>HU</key>
+  <dict>
+    <key>country_name</key><string>Hungary</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Includes centre-of-interests test.</string>
+  </dict>
+
+  <key>IE</key>
+  <dict>
+    <key>country_name</key><string>Ireland</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Also 280-day lookback across two years with 30-day minimum; 183 as primary threshold.</string>
+  </dict>
+
+  <key>IT</key>
+  <dict>
+    <key>country_name</key><string>Italy</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Registered residence, domicile, or habitual abode tests may apply.</string>
+  </dict>
+
+  <key>LV</key>
+  <dict>
+    <key>country_name</key><string>Latvia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Standard 183-day presence rule.</string>
+  </dict>
+
+  <key>LT</key>
+  <dict>
+    <key>country_name</key><string>Lithuania</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Alternative 280/90-day multi-year test exists; 183 retained as main switch.</string>
+  </dict>
+
+  <key>LU</key>
+  <dict>
+    <key>country_name</key><string>Luxembourg</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Cross-border worker treaties may apply; standard counting.</string>
+  </dict>
+
+  <key>MT</key>
+  <dict>
+    <key>country_name</key><string>Malta</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Domicile and ordinary residence concepts also relevant.</string>
+  </dict>
+
+  <key>NL</key>
+  <dict>
+    <key>country_name</key><string>Netherlands</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Facts-and-circumstances residency with 183 as a key threshold.</string>
+  </dict>
+
+  <key>PL</key>
+  <dict>
+    <key>country_name</key><string>Poland</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Centre of vital interests also considered.</string>
+  </dict>
+
+  <key>PT</key>
+  <dict>
+    <key>country_name</key><string>Portugal</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Residence may arise if a dwelling is maintained regardless of day count.</string>
+  </dict>
+
+  <key>RO</key>
+  <dict>
+    <key>country_name</key><string>Romania</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>OECD-aligned presence test.</string>
+  </dict>
+
+  <key>SK</key>
+  <dict>
+    <key>country_name</key><string>Slovakia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Permanent home/habitual abode tie-breakers apply.</string>
+  </dict>
+
+  <key>SI</key>
+  <dict>
+    <key>country_name</key><string>Slovenia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Standard 183-day presence test.</string>
+  </dict>
+
+  <key>ES</key>
+  <dict>
+    <key>country_name</key><string>Spain</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Alternative test: centre of economic interests or spouse/dependent residence.</string>
+  </dict>
+
+  <key>SE</key>
+  <dict>
+    <key>country_name</key><string>Sweden</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Residence may be determined earlier by acquiring a dwelling with intent to settle.</string>
+  </dict>
+
+  <!-- United Kingdom & Crown Dependencies -->
+  <key>GB</key>
+  <dict>
+    <key>country_name</key><string>United Kingdom</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>TAX_YEAR</string>
+    <key>tax_year_start_month</key><integer>4</integer>
+    <key>tax_year_start_day</key><integer>6</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>UK Statutory Residence Test (SRT) with ties; tax year Apr 6–Apr 5.</string>
+  </dict>
+
+  <key>JE</key>
+  <dict>
+    <key>country_name</key><string>Jersey</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Low personal tax jurisdiction; day-count plus ordinarily resident concepts.</string>
+  </dict>
+
+  <key>GG</key>
+  <dict>
+    <key>country_name</key><string>Guernsey</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Similar approach to Jersey.</string>
+  </dict>
+
+  <key>IM</key>
+  <dict>
+    <key>country_name</key><string>Isle of Man</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>TAX_YEAR</string>
+    <key>tax_year_start_month</key><integer>4</integer>
+    <key>tax_year_start_day</key><integer>6</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Tax year aligned with UK; tax caps regime.</string>
+  </dict>
+
+  <!-- Switzerland / EEA microstates -->
+  <key>CH</key>
+  <dict>
+    <key>country_name</key><string>Switzerland</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Canton-specific nuances; forfait (lump-sum) regime for eligible non-earners.</string>
+  </dict>
+
+  <key>NO</key>
+  <dict>
+    <key>country_name</key><string>Norway</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Also 270 days over any 3-year period test.</string>
+  </dict>
+
+  <key>IS</key>
+  <dict>
+    <key>country_name</key><string>Iceland</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Residence generally if stay exceeds 183 days.</string>
+  </dict>
+
+  <key>LI</key>
+  <dict>
+    <key>country_name</key><string>Liechtenstein</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Low-tax EEA microstate; residence permits required.</string>
+  </dict>
+
+  <key>AD</key>
+  <dict>
+    <key>country_name</key><string>Andorra</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Popular low-tax residence; active/passive permits.</string>
+  </dict>
+
+  <key>MC</key>
+  <dict>
+    <key>country_name</key><string>Monaco</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>No personal income tax for most; French nationals subject to FR rules.</string>
+  </dict>
+
+  <key>SM</key>
+  <dict>
+    <key>country_name</key><string>San Marino</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Small state; standard presence rule.</string>
+  </dict>
+
+  <!-- North America / Asia-Pacific advanced economies -->
+  <key>US</key>
+  <dict>
+    <key>country_name</key><string>United States</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Substantial Presence Test uses weighted prior-year days; green card test also applies.</string>
+  </dict>
+
+  <key>CA</key>
+  <dict>
+    <key>country_name</key><string>Canada</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Significant residential ties dominate; 183-day deemed resident rule.</string>
+  </dict>
+
+  <key>AU</key>
+  <dict>
+    <key>country_name</key><string>Australia</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>TAX_YEAR</string>
+    <key>tax_year_start_month</key><integer>7</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Multiple residency tests (resides, domicile, 183-day).</string>
+  </dict>
+
+  <key>NZ</key>
+  <dict>
+    <key>country_name</key><string>New Zealand</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>ROLLING_12_MONTHS</string>
+    <key>tax_year_start_month</key><integer>4</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Resident if present 183 days in any 12 months; exit test &gt;325 days absence in 12 months.</string>
+  </dict>
+
+  <key>JP</key>
+  <dict>
+    <key>country_name</key><string>Japan</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Resident categories (non-permanent vs permanent); 1-year presence concept.</string>
+  </dict>
+
+  <key>KR</key>
+  <dict>
+    <key>country_name</key><string>South Korea</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Resident if domicile or residence ≥183 days.</string>
+  </dict>
+
+  <key>SG</key>
+  <dict>
+    <key>country_name</key><string>Singapore</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Administrative concessions (2-/3-year rules) may apply.</string>
+  </dict>
+
+  <key>HK</key>
+  <dict>
+    <key>country_name</key><string>Hong Kong</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>TAX_YEAR</string>
+    <key>tax_year_start_month</key><integer>4</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Territorial taxation; 60-day employment exemption; year of assessment Apr–Mar.</string>
+  </dict>
+
+  <!-- Gulf / offshore centres -->
+  <key>AE</key>
+  <dict>
+    <key>country_name</key><string>United Arab Emirates</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>No PIT; separate corporate tax rules; also a 90-day/‘centre of interests’ path under domestic rules.</string>
+  </dict>
+
+  <key>BH</key>
+  <dict>
+    <key>country_name</key><string>Bahrain</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>No PIT; residence certification typically day-count based.</string>
+  </dict>
+
+  <key>QA</key>
+  <dict>
+    <key>country_name</key><string>Qatar</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>No PIT on employment income; company tax separate.</string>
+  </dict>
+
+  <!-- Caribbean / Indian Ocean / LatAm -->
+  <key>BM</key>
+  <dict>
+    <key>country_name</key><string>Bermuda</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><false/>
+    <key>notes</key><string>No PIT; payroll tax system applies to employers/employees.</string>
+  </dict>
+
+  <key>KY</key>
+  <dict>
+    <key>country_name</key><string>Cayman Islands</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><false/>
+    <key>notes</key><string>No PIT; economic-substance and immigration rules relevant.</string>
+  </dict>
+
+  <key>VG</key>
+  <dict>
+    <key>country_name</key><string>British Virgin Islands</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><false/>
+    <key>notes</key><string>No PIT; day-count used for residence certifications/CRS.</string>
+  </dict>
+
+  <key>BS</key>
+  <dict>
+    <key>country_name</key><string>Bahamas</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><false/>
+    <key>notes</key><string>No PIT; residency via permits and day-count.</string>
+  </dict>
+
+  <key>PA</key>
+  <dict>
+    <key>country_name</key><string>Panama</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Territorial taxation; Friendly Nations visa common.</string>
+  </dict>
+
+  <key>MU</key>
+  <dict>
+    <key>country_name</key><string>Mauritius</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Alternative multi-year presence tests exist; 183 used as primary threshold.</string>
+  </dict>
+
+  <key>SC</key>
+  <dict>
+    <key>country_name</key><string>Seychelles</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Popular offshore centre; personal tax framework applies.</string>
+  </dict>
+
+  <key>GI</key>
+  <dict>
+    <key>country_name</key><string>Gibraltar</string>
+    <key>day_threshold</key><integer>183</integer>
+    <key>window_type</key><string>CALENDAR_YEAR</string>
+    <key>tax_year_start_month</key><integer>1</integer>
+    <key>tax_year_start_day</key><integer>1</integer>
+    <key>counts_arrival_departure</key><true/>
+    <key>counts_partial_days</key><true/>
+    <key>counts_weekends_holidays</key><true/>
+    <key>treaty_employment_183_rule</key><true/>
+    <key>notes</key><string>Low-rate personal income tax with special categories.</string>
+  </dict>
+
+</dict>
+</plist>
