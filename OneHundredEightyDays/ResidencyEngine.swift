@@ -72,8 +72,8 @@ public struct PassengerResidencySummary {
 
 // MARK: - Rules loader
 
+// MARK: - Rules loader (fixed: preserve "Default")
 public enum RulesLoader {
-    /// Loads "183_days_rules_full.plist" by default.
     public static func loadRules(fromPlistNamed name: String = "183_days_rules") throws -> [String: CountryRule] {
         guard let url = Bundle.main.url(forResource: name, withExtension: "plist") else {
             throw NSError(domain: "ResidencyEngine", code: 1,
@@ -93,11 +93,24 @@ public enum RulesLoader {
             guard let dict = value as? [String: Any] else { continue }
             let subdata = try PropertyListSerialization.data(fromPropertyList: dict, format: .xml, options: 0)
             let rule = try decoder.decode(CountryRule.self, from: subdata)
-            out[code.uppercased()] = rule
+
+            // Preserve the special "Default" key; uppercase ISO codes only.
+            let key = (code == "Default") ? "Default" : code.uppercased()
+            out[key] = rule
         }
+
+        // Optional: sanity check to help debug if needed
+        #if DEBUG
+        if out["Default"] == nil {
+            let known = out.keys.sorted().joined(separator: ", ")
+            print("⚠️ RulesLoader: 'Default' missing. Keys: \(known)")
+        }
+        #endif
+
         return out
     }
 }
+
 
 // MARK: - Trip fetching (Core Data)
 
