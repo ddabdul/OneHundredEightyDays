@@ -9,7 +9,6 @@ import CoreData
 struct AddManualTripView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.horizontalSizeClass) private var hSize
 
     private static let lookup = AirportLookup()
 
@@ -20,8 +19,6 @@ struct AddManualTripView: View {
     @State private var destCode = ""
     @State private var travelDate: Date = .now
     @State private var errorMessage: String?
-
-    @State private var showDateSheet = false
 
     enum Field { case passenger, airline, flight, origin, dest }
     @FocusState private var focus: Field?
@@ -38,17 +35,12 @@ struct AddManualTripView: View {
         NavigationStack {
             Form {
                 Section("Traveler") {
-                    HidingAssistantTextField(
-                        text: $passenger,
-                        placeholder: "Passenger name",
-                        contentType: .name,
-                        capitalization: .words,
-                        keyboard: .default,
-                        returnKey: .next,
-                        onReturn: { focus = .airline }
-                    )
-                    .frame(maxWidth: .infinity)
-                    .focused($focus, equals: .passenger)
+                    TextField("Passenger name", text: $passenger)
+                        .textContentType(.name)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.next)
+                        .focused($focus, equals: .passenger)
+                        .onSubmit { focus = .airline }
                 }
 
                 Section("Flight") {
@@ -62,7 +54,6 @@ struct AddManualTripView: View {
                         onReturn: { focus = .flight }
                     )
                     .frame(maxWidth: .infinity)
-                    .focused($focus, equals: .airline)
 
                     HidingAssistantTextField(
                         text: $flightNumber,
@@ -74,7 +65,6 @@ struct AddManualTripView: View {
                         onReturn: { focus = .origin }
                     )
                     .frame(maxWidth: .infinity)
-                    .focused($focus, equals: .flight)
                 }
 
                 Section("Route") {
@@ -88,8 +78,6 @@ struct AddManualTripView: View {
                         onReturn: { focus = .dest }
                     )
                     .frame(maxWidth: .infinity)
-                    .focused($focus, equals: .origin)
-
                     hint(for: originCode)
 
                     HidingAssistantTextField(
@@ -102,23 +90,9 @@ struct AddManualTripView: View {
                         onReturn: { focus = nil }
                     )
                     .frame(maxWidth: .infinity)
-                    .focused($focus, equals: .dest)
-
                     hint(for: destCode)
 
-                    // Date trigger row – no inline folding
-                    Button {
-                        focus = nil
-                        DispatchQueue.main.async { showDateSheet = true }
-                    } label: {
-                        HStack {
-                            Text("Travel date")
-                            Spacer()
-                            Text(travelDate.formatted(date: .abbreviated, time: .omitted))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .accessibilityLabel("Travel date")
+                    DatePicker("Travel date", selection: $travelDate, displayedComponents: .date)
                 }
 
                 if let err = errorMessage {
@@ -135,8 +109,10 @@ struct AddManualTripView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        focus = nil
-                        DispatchQueue.main.async { dismiss() }
+                        focus = nil                       // 1) end focus
+                        DispatchQueue.main.async {        // 2) dismiss next runloop
+                            dismiss()
+                        }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -144,29 +120,9 @@ struct AddManualTripView: View {
                         .disabled(!canSave)
                 }
             }
-            .sheet(isPresented: $showDateSheet) {
-                NavigationStack {
-                    VStack(alignment: .leading, spacing: 16) {
-                        DatePicker("Select date", selection: $travelDate, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .labelsHidden()
-
-                        Spacer()
-
-                        HStack {
-                            Button("Cancel") { showDateSheet = false }
-                            Spacer()
-                            Button("Done") { showDateSheet = false }
-                                .buttonStyle(.borderedProminent)
-                        }
-                    }
-                    .padding()
-                    .navigationTitle("Travel date")
-                    .navigationBarTitleDisplayMode(.inline)
-                }
-                .presentationDetents(hSize == .regular ? [.medium] : [.fraction(0.6), .large])
-                .presentationDragIndicator(.visible)
-            }
+        }
+        .onDisappear {
+            // Avoid forcing endEditing from here; the delayed dismiss handles teardown cleanly.
         }
     }
 
@@ -174,7 +130,7 @@ struct AddManualTripView: View {
     private func hint(for code: String) -> some View {
         let u = code.trimmed.uppercased()
         if u.count >= 3 {
-            Text(Self.lookup.displayName(for: u)) // “BRU — Brussels, Country”
+            Text(Self.lookup.displayName(for: u))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -183,6 +139,7 @@ struct AddManualTripView: View {
     private func save() {
         errorMessage = nil
         focus = nil
+        // Allow the input session to end *before* we dismiss & write
         DispatchQueue.main.async {
             do {
                 _ = try TripStore.saveTrip(
@@ -194,7 +151,7 @@ struct AddManualTripView: View {
                     passenger: passenger.trimmed,
                     imageData: DefaultAssets.manualTripIconData,
                     in: viewContext
-                ) // builds naturalKey, resolves airport/country, handles duplicates:contentReference[oaicite:2]{index=2}:contentReference[oaicite:3]{index=3}
+                )
                 dismiss()
             } catch {
                 errorMessage = "Failed to save trip: \(error.localizedDescription)"
