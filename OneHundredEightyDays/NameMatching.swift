@@ -134,9 +134,9 @@ public struct NameMatchResult<T: NSManagedObject> {
     public let comparedAgainst: String
 }
 
-public enum DedupDecision<T: NSManagedObject> {
-    case useExisting(T)
-    case createdNew(T)
+public enum DedupDecision<Entity: NSManagedObject> {
+    case useExisting(Entity, score: Double)
+    case createdNew(Entity, score: Double)
 }
 
 public enum DedupError: Error {

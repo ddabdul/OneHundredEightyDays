@@ -31,8 +31,14 @@ struct TripStore {
 
     // MARK: - Public API (ASYNC, preferred)
 
-    /// Async save. IMPORTANT: we lock the natural key to the **RAW** passenger input
-    /// so that name de-dup confirmation never affects uniqueness / duplicate detection.
+    /// Async save flow:
+    /// 1) Compute travel day.
+    /// 2) **Duplicate-trip precheck** without user interaction:
+    ///    - Fetch existing trips for same airline+flight+day.
+    ///    - Compare passenger via deterministic normalization (no prompt).
+    ///    - If found, return existing and emit toast notification on the main queue.
+    /// 3) Otherwise, run **NameDedupService** to confirm passenger name (auto-accept at 100%).
+    /// 4) Insert using a naturalKey built from the INPUT’s machine-normalized passenger (stable).
     @discardableResult
     static func saveTripAsync(
         airline: String,
@@ -50,52 +56,61 @@ struct TripStore {
         let date = dateFromJulian(julianDate) ?? Date()
         let day = Calendar.current.startOfDay(for: date)
 
-        // 2) Build and FIX the natural key using the **raw** passenger name.
-        let fixedKey = normalizedKey(
+        // 2) Duplicate-trip precheck (no UI): compare on airline+flight+day+normalized-passenger
+        let normalizedPassengerForKey = machineNormalizedPassenger(passenger)
+        if let existing = findExistingTrip(
             airline: airline,
             flightNumber: flightNumber,
-            travelDate: day,
-            passenger: passenger                 // <-- raw, not resolved
-        )
-
-        // 3) Fast duplicate check on the fixed key (and bail out early)
-        if let existing = fetchTrip(withKey: fixedKey, in: context) {
-            log.notice("Duplicate trip detected (raw passenger key): \(tripDescription(existing), privacy: .public)")
-            NotificationCenter.default.post(
-                name: .tripDuplicateDetected,
-                object: nil,
-                userInfo: ["message": tripDescription(existing)]
-            )
+            travelDay: day,
+            passengerNormalized: normalizedPassengerForKey,
+            in: context
+        ) {
+            log.notice("Duplicate trip detected (precheck): \(tripDescription(existing), privacy: .public)")
+            // ⛔️ Don't capture `existing` (non-Sendable) inside the @Sendable closure.
+            let message = tripDescription(existing)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .tripDuplicateDetected,
+                    object: nil,
+                    userInfo: ["message": message]
+                )
+            }
             return existing
         }
 
-        // 4) No trip yet → resolve/confirm passenger name (may prompt the user)
+        // 3) No duplicate found → resolve/confirm passenger (may prompt; auto-accept at 100%)
         let resolvedPassenger = await resolvePassengerNameWithUserConfirmation(
             inputPassenger: passenger,
             in: context,
             threshold: similarityThreshold
         )
 
-        // 5) Generate display strings and country codes
+        // 4) Generate display strings and country codes
         let departDisplay = airportLookup.displayName(for: originCode)
         let arriveDisplay = airportLookup.displayName(for: destCode)
-
         let departISO = airportLookup.airport(for: originCode)?.country.uppercased() ?? ""
         let arriveISO = airportLookup.airport(for: destCode)?.country.uppercased() ?? ""
+
+        // 5) Insert (naturalKey derived from INPUT’s machine-normalized passenger only)
+        let fixedKey = normalizedKey(
+            airline: airline,
+            flightNumber: flightNumber,
+            travelDate: day,
+            passenger: normalizedPassengerForKey
+        )
 
         var saved: TripEntity!
         var captured: Error?
 
-        // Respect the context’s queue
         context.performAndWait {
-            // === DIRECT INSERT (no second duplicate check, no re-keying) ===
+            // === DIRECT INSERT ===
             let trip = TripEntity(context: context)
             trip.id                   = UUID()
-            trip.naturalKey           = fixedKey            // <-- stays the *raw* passenger key
+            trip.naturalKey           = fixedKey
             trip.airline              = airline
             trip.flightNumber         = flightNumber
             trip.travelDate           = day
-            trip.passenger            = resolvedPassenger   // <-- what the user chose/confirmed
+            trip.passenger            = resolvedPassenger
             trip.departureCity        = departDisplay
             trip.arrivalCity          = arriveDisplay
             trip.departureCountry     = departISO
@@ -112,9 +127,7 @@ struct TripStore {
             }
         }
 
-        if let err = captured {
-            throw TripStoreError.saveFailed(err)
-        }
+        if let err = captured { throw TripStoreError.saveFailed(err) }
         return saved
     }
 
@@ -162,9 +175,10 @@ struct TripStore {
         }
     }
 
-    // MARK: - Name resolution (calls your existing NameDedupService)
+    // MARK: - Name resolution (calls your NameDedupService)
 
     /// Runs the passenger name de-dup flow in a child context, returns the final name to store.
+    /// Logs whether it was auto-accepted (100%) or user-decided (<100%), with the similarity score.
     @MainActor
     private static func resolvePassengerNameWithUserConfirmation(
         inputPassenger: String,
@@ -190,10 +204,15 @@ struct TripStore {
             }
 
             switch decision {
-            case .useExisting(let existing):
-                return (existing as? TripEntity)?.passenger ?? inputPassenger
-            case .createdNew(let created):
-                return (created as? TripEntity)?.passenger ?? inputPassenger
+            case .useExisting(let existing, let score):
+                let name = (existing as? TripEntity)?.passenger ?? inputPassenger
+                log.notice("Passenger name auto-resolved to existing: \(name, privacy: .public) [similarity: \(score, format: .fixed(precision: 3))]")
+                return name
+
+            case .createdNew(let created, let score):
+                let name = (created as? TripEntity)?.passenger ?? inputPassenger
+                log.notice("Passenger name created new: \(name, privacy: .public) [similarity: \(score, format: .fixed(precision: 3))]")
+                return name
             }
         } catch {
             log.error("Name resolution failed: \(error.localizedDescription, privacy: .public)")
@@ -201,19 +220,45 @@ struct TripStore {
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - Duplicate-trip precheck helpers
 
-    /// FAST fetch for an existing trip by natural key.
-    private static func fetchTrip(withKey key: String, in context: NSManagedObjectContext) -> TripEntity? {
-        var result: TripEntity?
+    /// Deterministic, *non-interactive* normalization for passenger names to build keys/compare duplicates.
+    /// Uses your String normalization and uppercases for stability.
+    private static func machineNormalizedPassenger(_ s: String) -> String {
+        s.normalizedName.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+
+    /// Looks up existing trips for the same airline+flight+day and compares passenger via machine normalization.
+    /// This avoids relying on historical `naturalKey` formats.
+    private static func findExistingTrip(
+        airline: String,
+        flightNumber: String,
+        travelDay: Date,
+        passengerNormalized: String,
+        in context: NSManagedObjectContext
+    ) -> TripEntity? {
+        var hit: TripEntity?
         context.performAndWait {
             let req: NSFetchRequest<TripEntity> = TripEntity.fetchRequest()
-            req.fetchLimit = 1
-            req.predicate = NSPredicate(format: "naturalKey == %@", key)
-            result = try? context.fetch(req).first
+            req.fetchLimit = 20
+            req.predicate = NSPredicate(
+                format: "airline ==[c] %@ AND flightNumber ==[c] %@ AND travelDate == %@",
+                airline, flightNumber, travelDay as NSDate
+            )
+            if let candidates = try? context.fetch(req), !candidates.isEmpty {
+                for t in candidates {
+                    let existingNorm = machineNormalizedPassenger(t.passenger ?? "")
+                    if existingNorm == passengerNormalized {
+                        hit = t
+                        break
+                    }
+                }
+            }
         }
-        return result
+        return hit
     }
+
+    // MARK: - Helpers
 
     private static func tripDescription(_ trip: TripEntity) -> String {
         let df = DateFormatter()
