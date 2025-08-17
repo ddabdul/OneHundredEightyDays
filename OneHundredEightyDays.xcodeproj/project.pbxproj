@@ -10,6 +10,7 @@
 		0926FCCE2E3FE7A300B9E694 /* TripEntity+CoreDataClass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0926FCCC2E3FE7A300B9E694 /* TripEntity+CoreDataClass.swift */; };
 		0926FCCF2E3FE7A300B9E694 /* TripEntity+CoreDataProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0926FCCD2E3FE7A300B9E694 /* TripEntity+CoreDataProperties.swift */; };
 		0926FCE72E3FF99C00B9E694 /* BoardingPassKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0926FCE62E3FF99C00B9E694 /* BoardingPassKit */; };
+		09BBD0522E52693C00389A12 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 09BBD0512E52693C00389A12 /* ZIPFoundation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,9 +19,22 @@
 		0926FCCD2E3FE7A300B9E694 /* TripEntity+CoreDataProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TripEntity+CoreDataProperties.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		09BBD0562E526ECD00389A12 /* Exceptions for "OneHundredEightyDays" folder in "OneHundredEightyDays" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0926FCB52E3FDDAE00B9E694 /* OneHundredEightyDays */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0926FCB82E3FDDAE00B9E694 /* OneHundredEightyDays */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				09BBD0562E526ECD00389A12 /* Exceptions for "OneHundredEightyDays" folder in "OneHundredEightyDays" target */,
+			);
 			path = OneHundredEightyDays;
 			sourceTree = "<group>";
 		};
@@ -32,6 +46,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0926FCE72E3FF99C00B9E694 /* BoardingPassKit in Frameworks */,
+				09BBD0522E52693C00389A12 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +100,7 @@
 			name = OneHundredEightyDays;
 			packageProductDependencies = (
 				0926FCE62E3FF99C00B9E694 /* BoardingPassKit */,
+				09BBD0512E52693C00389A12 /* ZIPFoundation */,
 			);
 			productName = OneHundredEightyDays;
 			productReference = 0926FCB62E3FDDAE00B9E694 /* OneHundredEightyDays.app */;
@@ -116,6 +132,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				0926FCE52E3FF99B00B9E694 /* XCRemoteSwiftPackageReference "BoardingPassKit" */,
+				09BBD0502E52693C00389A12 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0926FCB72E3FDDAE00B9E694 /* Products */;
@@ -281,7 +298,9 @@
 				DEVELOPMENT_TEAM = A795JXJL3T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OneHundredEightyDays/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We use the camera to take a picture of your boarding pass";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We use photolibrary to allow you to upload a picture of your boading pass";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -315,7 +334,9 @@
 				DEVELOPMENT_TEAM = A795JXJL3T;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OneHundredEightyDays/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.business";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "We use the camera to take a picture of your boarding pass";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We use photolibrary to allow you to upload a picture of your boading pass";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -371,6 +392,14 @@
 				minimumVersion = 0.9.4;
 			};
 		};
+		09BBD0502E52693C00389A12 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -378,6 +407,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0926FCE52E3FF99B00B9E694 /* XCRemoteSwiftPackageReference "BoardingPassKit" */;
 			productName = BoardingPassKit;
+		};
+		09BBD0512E52693C00389A12 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 09BBD0502E52693C00389A12 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

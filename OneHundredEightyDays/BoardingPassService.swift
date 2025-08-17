@@ -88,7 +88,7 @@ struct BoardingPassService {
     ///   mainSegmentA: payload (desc..bagtag)                       = 24
     ///   mainSegmentB: hexLenB(2) + payload (airline..ffNumber)     = 2 + 37
     ///   -------------------------------------------------------------- total = 67
-    private static func sanitizeForDependencyDecoder(_ raw: String) throws -> String {
+    static func sanitizeForDependencyDecoder(_ raw: String) throws -> String {
         // Normalize whitespace and drop CR/LF
         var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         s.removeAll(where: { $0 == "\r" || $0 == "\n" })
