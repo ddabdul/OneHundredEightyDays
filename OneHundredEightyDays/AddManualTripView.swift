@@ -19,11 +19,13 @@ struct AddManualTripView: View {
     @State private var destCode = ""
     @State private var travelDate: Date = .now
     @State private var errorMessage: String?
+    @State private var isSaving = false
 
     enum Field { case passenger, airline, flight, origin, dest }
     @FocusState private var focus: Field?
 
     private var canSave: Bool {
+        !isSaving &&
         !airline.trimmed.isEmpty &&
         !flightNumber.trimmed.isEmpty &&
         originCode.trimmed.count >= 3 &&
@@ -109,15 +111,21 @@ struct AddManualTripView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        focus = nil                       // 1) end focus
-                        DispatchQueue.main.async {        // 2) dismiss next runloop
-                            dismiss()
-                        }
+                        focus = nil
+                        DispatchQueue.main.async { dismiss() }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(!canSave)
+                    Button {
+                        Task { await saveAsync() }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text("Save")
+                        }
+                    }
+                    .disabled(!canSave)
                 }
             }
         }
@@ -136,28 +144,33 @@ struct AddManualTripView: View {
         }
     }
 
-    private func save() {
+    // MARK: - Save (async)
+
+    @MainActor
+    private func saveAsync() async {
         errorMessage = nil
         focus = nil
-        // Allow the input session to end *before* we dismiss & write
-        DispatchQueue.main.async {
-            do {
-                _ = try TripStore.saveTrip(
-                    airline: airline.trimmed.uppercased(),
-                    originCode: originCode.trimmed.uppercased(),
-                    destCode: destCode.trimmed.uppercased(),
-                    flightNumber: flightNumber.trimmed.uppercased(),
-                    julianDate: julianDay(of: travelDate),
-                    passenger: passenger.trimmed,
-                    imageData: DefaultAssets.manualTripIconData,
-                    in: viewContext
-                )
-                dismiss()
-            } catch {
-                errorMessage = "Failed to save trip: \(error.localizedDescription)"
-            }
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            _ = try await TripStore.saveTripAsync(
+                airline: airline.trimmed.uppercased(),
+                originCode: originCode.trimmed.uppercased(),
+                destCode: destCode.trimmed.uppercased(),
+                flightNumber: flightNumber.trimmed.uppercased(),
+                julianDate: julianDay(of: travelDate),
+                passenger: passenger.trimmed,
+                imageData: DefaultAssets.manualTripIconData,
+                in: viewContext
+            )
+            dismiss()
+        } catch {
+            errorMessage = "Failed to save trip: \(error.localizedDescription)"
         }
     }
+
+    // MARK: - Helpers
 
     private func julianDay(of date: Date) -> Int {
         let cal = Calendar(identifier: .gregorian)

@@ -51,22 +51,22 @@ struct BoardingPassService {
         #endif
         logger.debug("Sanitized BCBP length = \(safeCode.count, privacy: .public)")
 
-        // 3) Decode using a fresh decoder
-        let pass = try BoardingPassDecoder().decode(code: safeCode)
+        // 3) Decode the boarding pass
+                let pass = try BoardingPassDecoder().decode(code: safeCode)
 
-        // 4) Persist the trip (your canonical save)
-        _ = try TripStore.saveTrip(
-            airline: pass.info.operatingCarrier,
-            originCode: pass.info.origin,
-            destCode: pass.info.destination,
-            flightNumber: pass.info.flightno,
-            julianDate: pass.info.julianDate,
-            passenger: pass.info.name,
-            imageData: rawData,
-            in: context
-        )
+                // 4) Persist the trip (use async API; do NOT call the deprecated sync wrapper)
+                _ = try await TripStore.saveTripAsync(
+                    airline: pass.info.operatingCarrier,
+                    originCode: pass.info.origin,
+                    destCode: pass.info.destination,
+                    flightNumber: pass.info.flightno,
+                    julianDate: pass.info.julianDate,
+                    passenger: pass.info.name,
+                    imageData: rawData,
+                    in: context
+                )
 
-        return pass
+                return pass
     }
 
     // MARK: – Dependency-safe sanitization

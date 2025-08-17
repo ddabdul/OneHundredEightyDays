@@ -28,26 +28,29 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            GlobalToastOverlay {
-                PhotoQRCodeReader()
+            // Wrap the root reader in both overlays:
+            PassengerDuplicatePromptOverlay {
+                GlobalToastOverlay {
+                    PhotoQRCodeReader()
+                }
             }
             .navigationTitle("Import Boarding Pass")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
-                        UIApplication.shared.endEditing()      // NEW
+                        UIApplication.shared.endEditing()
                         showTrips = true
                     } label: {
                         Label("Trips", systemImage: "airplane")
                     }
                     Button {
-                        UIApplication.shared.endEditing()      // NEW
+                        UIApplication.shared.endEditing()
                         showDaysByCountry = true
                     } label: {
                         Label("Days by Country", systemImage: "calendar.badge.clock")
                     }
                     Button {
-                        UIApplication.shared.endEditing()      // NEW
+                        UIApplication.shared.endEditing()
                         showAddManualTrip = true
                     } label: {
                         Label("Add Trip", systemImage: "plus")
@@ -58,24 +61,35 @@ struct HomeView: View {
             // Trips sheet
             .sheet(isPresented: $showTrips) {
                 NavigationStack {
-                    GlobalToastOverlay {
-                        TripBrowserView()
-                            .navigationTitle("Saved Trips")
+                    // Wrap the sheet screen too (so alerts appear over it)
+                    PassengerDuplicatePromptOverlay {
+                        GlobalToastOverlay {
+                            TripBrowserView()
+                                .navigationTitle("Saved Trips")
+                        }
                     }
                 }
             }
             // Days-by-country sheet
             .sheet(isPresented: $showDaysByCountry) {
                 NavigationStack {
-                    PassengerDaysByCountryView()
-                        .navigationTitle("Days by Country")
+                    // This screen doesn't save trips, so overlay not strictly needed,
+                    // but harmless to leave out.
+                    PassengerDuplicatePromptOverlay {
+                        PassengerDaysByCountryView()
+                            .navigationTitle("Days by Country")
+                    }
                 }
             }
             // Manual add sheet
             .sheet(isPresented: $showAddManualTrip) {
                 NavigationStack {
-                    AddManualTripView()
-                        .navigationTitle("Add Trip")
+                    PassengerDuplicatePromptOverlay {
+                        GlobalToastOverlay {
+                            AddManualTripView()
+                                .navigationTitle("Add Trip")
+                        }
+                    }
                 }
             }
         }
@@ -83,7 +97,6 @@ struct HomeView: View {
         .ignoresSafeArea(.keyboard, edges: .bottom)
     }
 }
-
 
 
 // MARK: - Global Toast Overlay
@@ -120,6 +133,76 @@ private struct GlobalToastOverlay<Content: View>: View {
             }
     }
 }
+
+
+// MARK: - Passenger Duplicate Prompt Overlay
+
+/// Listens for `.passengerDuplicatePrompt` and presents an Alert with two actions:
+/// - "Use Existing": posts `.passengerDuplicateAnswered` with `choice = "useExisting"`
+/// - "Create New":   posts `.passengerDuplicateAnswered` with `choice = "createNew"`
+///
+/// This mirrors the notification-driven pattern used by GlobalToastOverlay, but requires
+/// an interactive choice, so it uses a SwiftUI alert instead of a passive banner.
+private struct PassengerDuplicatePromptOverlay<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    @State private var activePrompt: Prompt?
+
+    struct Prompt: Identifiable {
+        let id: UUID
+        let message: String
+    }
+
+    var body: some View {
+        content
+            .onReceive(NotificationCenter.default.publisher(for: .passengerDuplicatePrompt)) { note in
+                let id = note.userInfo?["promptID"] as? UUID
+                let msg = note.userInfo?["message"] as? String
+                if let id, let msg {
+                    activePrompt = Prompt(id: id, message: msg)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+            .alert("Passenger Already Exists",
+                   isPresented: Binding(get: { activePrompt != nil },
+                                       set: { if !$0 { activePrompt = nil } })) {
+                Button("Use Existing") {
+                    if let id = activePrompt?.id {
+                        NotificationCenter.default.post(
+                            name: .passengerDuplicateAnswered,
+                            object: nil,
+                            userInfo: ["promptID": id, "choice": "useExisting"]
+                        )
+                    }
+                    activePrompt = nil
+                }
+                Button("Create New", role: .destructive) {
+                    if let id = activePrompt?.id {
+                        NotificationCenter.default.post(
+                            name: .passengerDuplicateAnswered,
+                            object: nil,
+                            userInfo: ["promptID": id, "choice": "createNew"]
+                        )
+                    }
+                    activePrompt = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    // Treat cancel as "Create New" to keep flow moving; adjust if you prefer silent-cancel.
+                    if let id = activePrompt?.id {
+                        NotificationCenter.default.post(
+                            name: .passengerDuplicateAnswered,
+                            object: nil,
+                            userInfo: ["promptID": id, "choice": "createNew"]
+                        )
+                    }
+                    activePrompt = nil
+                }
+            } message: {
+                Text(activePrompt?.message ?? "")
+            }
+    }
+}
+
 
 // MARK: - Toast UI
 

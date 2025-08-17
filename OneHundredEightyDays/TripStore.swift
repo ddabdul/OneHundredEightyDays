@@ -29,49 +29,57 @@ struct TripStore {
     private static let airportLookup = AirportLookup()
     private static let log = Logger(subsystem: "OneHundredEightyDays", category: "TripStore")
 
-    // MARK: - Public API
+    // MARK: - Public API (ASYNC, preferred)
 
-    /// Single save entry-point used by the whole app.
-    /// - Important: Requires a `naturalKey: String` attribute on TripEntity (unique constraint recommended).
-    /// - Parameters:
-    ///   - airline: Operating carrier (e.g., "SN")
-    ///   - originCode: IATA airport code
-    ///   - destCode: IATA airport code
-    ///   - flightNumber: "1234" (do not include airline code)
-    ///   - julianDate: IATA BCBP julian day-of-year
-    ///   - passenger: Full passenger name (first + family) as printed
-    ///   - imageData: Original PNG/JPEG of the boarding pass (optional)
-    ///   - context: NSManagedObjectContext to write into
-    /// - Returns: The `TripEntity` (existing if duplicate, or newly inserted/updated)
+    /// Async save. IMPORTANT: we lock the natural key to the **RAW** passenger input
+    /// so that name de-dup confirmation never affects uniqueness / duplicate detection.
     @discardableResult
-    static func saveTrip(
+    static func saveTripAsync(
         airline: String,
         originCode: String,
         destCode: String,
         flightNumber: String,
         julianDate: Int,
-        passenger: String,
+        passenger: String,          // raw passenger as read from BCBP / manual input
         imageData: Data?,
-        in context: NSManagedObjectContext
-    ) throws -> TripEntity {
+        in context: NSManagedObjectContext,
+        similarityThreshold: Double = 0.82
+    ) async throws -> TripEntity {
 
-        // Resolve travel date (day precision)
+        // 1) Resolve travel date (day precision)
         let date = dateFromJulian(julianDate) ?? Date()
-        let day   = Calendar.current.startOfDay(for: date)
+        let day = Calendar.current.startOfDay(for: date)
 
-        // Build normalized natural key (AIRLINE|FLIGHT|YYYY-MM-DD|PASSENGER)
-        let key = normalizedKey(
+        // 2) Build and FIX the natural key using the **raw** passenger name.
+        let fixedKey = normalizedKey(
             airline: airline,
             flightNumber: flightNumber,
             travelDate: day,
-            passenger: passenger
+            passenger: passenger                 // <-- raw, not resolved
         )
 
-        // Generate user-facing display values (metro city aware)
+        // 3) Fast duplicate check on the fixed key (and bail out early)
+        if let existing = fetchTrip(withKey: fixedKey, in: context) {
+            log.notice("Duplicate trip detected (raw passenger key): \(tripDescription(existing), privacy: .public)")
+            NotificationCenter.default.post(
+                name: .tripDuplicateDetected,
+                object: nil,
+                userInfo: ["message": tripDescription(existing)]
+            )
+            return existing
+        }
+
+        // 4) No trip yet → resolve/confirm passenger name (may prompt the user)
+        let resolvedPassenger = await resolvePassengerNameWithUserConfirmation(
+            inputPassenger: passenger,
+            in: context,
+            threshold: similarityThreshold
+        )
+
+        // 5) Generate display strings and country codes
         let departDisplay = airportLookup.displayName(for: originCode)
         let arriveDisplay = airportLookup.displayName(for: destCode)
 
-        // ISO 3166-1 alpha-2 country codes from AirportLite (uppercased for consistency)
         let departISO = airportLookup.airport(for: originCode)?.country.uppercased() ?? ""
         let arriveISO = airportLookup.airport(for: destCode)?.country.uppercased() ?? ""
 
@@ -80,42 +88,20 @@ struct TripStore {
 
         // Respect the context’s queue
         context.performAndWait {
-            // 1) Check for an existing trip with the same natural key
-            let req: NSFetchRequest<TripEntity> = TripEntity.fetchRequest()
-            req.fetchLimit = 1
-            req.predicate = NSPredicate(format: "naturalKey == %@", key)
-
-            _ = (try? context.fetch(req))?.first
-
-            if let trip = (try? context.fetch(req))?.first {
-                          // === DUPLICATE PATH ===
-                          // Per requirement: do not modify or save anything, just return the existing row.
-                          saved = trip
-
-                          // Optional: still emit a signal so the UI can show a toast/badge, etc. (no DB writes)
-                          log.notice("Duplicate trip detected: \(tripDescription(trip), privacy: .public)")
-                          NotificationCenter.default.post(
-                              name: .tripDuplicateDetected,
-                              object: nil,
-                              userInfo: ["message": tripDescription(trip)]
-                          )
-                          return
-                      }
-
-            // 3) Otherwise, insert a brand new TripEntity
+            // === DIRECT INSERT (no second duplicate check, no re-keying) ===
             let trip = TripEntity(context: context)
-            trip.id               = UUID()
-            trip.naturalKey       = key
-            trip.airline          = airline
-            trip.flightNumber     = flightNumber
-            trip.travelDate       = day
-            trip.passenger        = passenger
-            trip.departureCity    = departDisplay
-            trip.arrivalCity      = arriveDisplay
-            trip.departureCountry = departISO        // NEW
-            trip.arrivalCountry   = arriveISO        // NEW
-            trip.imageData        = imageData
-            trip.arrivalAirportCode = destCode
+            trip.id                   = UUID()
+            trip.naturalKey           = fixedKey            // <-- stays the *raw* passenger key
+            trip.airline              = airline
+            trip.flightNumber         = flightNumber
+            trip.travelDate           = day
+            trip.passenger            = resolvedPassenger   // <-- what the user chose/confirmed
+            trip.departureCity        = departDisplay
+            trip.arrivalCity          = arriveDisplay
+            trip.departureCountry     = departISO
+            trip.arrivalCountry       = arriveISO
+            trip.imageData            = imageData
+            trip.arrivalAirportCode   = destCode
             trip.departureAirportCode = originCode
 
             do {
@@ -132,7 +118,102 @@ struct TripStore {
         return saved
     }
 
+    // MARK: - Public API (sync wrapper) — avoid on main thread
+
+    /// Legacy synchronous wrapper. **Do not call this on the main thread** because it will block UI.
+    /// Prefer calling `saveTripAsync` from a `Task {}` and `await` it.
+    @available(*, deprecated, message: "Use saveTripAsync from the main thread. This sync wrapper must not be called on the main thread.")
+    @discardableResult
+    static func saveTrip(
+        airline: String,
+        originCode: String,
+        destCode: String,
+        flightNumber: String,
+        julianDate: Int,
+        passenger: String,
+        imageData: Data?,
+        in context: NSManagedObjectContext
+    ) throws -> TripEntity {
+        precondition(!Thread.isMainThread, "Do not call TripStore.saveTrip (sync) on the main thread; use saveTripAsync.")
+        var output: Result<TripEntity, Error>!
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            do {
+                let trip = try await saveTripAsync(
+                    airline: airline,
+                    originCode: originCode,
+                    destCode: destCode,
+                    flightNumber: flightNumber,
+                    julianDate: julianDate,
+                    passenger: passenger,
+                    imageData: imageData,
+                    in: context
+                )
+                output = .success(trip)
+            } catch {
+                output = .failure(error)
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        switch output! {
+        case .success(let trip): return trip
+        case .failure(let err): throw err
+        }
+    }
+
+    // MARK: - Name resolution (calls your existing NameDedupService)
+
+    /// Runs the passenger name de-dup flow in a child context, returns the final name to store.
+    @MainActor
+    private static func resolvePassengerNameWithUserConfirmation(
+        inputPassenger: String,
+        in parentContext: NSManagedObjectContext,
+        threshold: Double = 0.82
+    ) async -> String {
+        let child = NSManagedObjectContext(concurrencyType: .mainQueueConcurrencyType)
+        child.parent = parentContext
+        child.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        defer { child.reset() }
+
+        do {
+            let service = NameDedupService(context: child)
+            let decision = try await service.deduplicateOrCreate(
+                entityName: "TripEntity",
+                nameKeyPath: "passenger",
+                inputFullName: inputPassenger,
+                threshold: threshold
+            ) { ctx, cleanName in
+                let tmp = TripEntity(context: ctx)
+                tmp.passenger = cleanName
+                return tmp
+            }
+
+            switch decision {
+            case .useExisting(let existing):
+                return (existing as? TripEntity)?.passenger ?? inputPassenger
+            case .createdNew(let created):
+                return (created as? TripEntity)?.passenger ?? inputPassenger
+            }
+        } catch {
+            log.error("Name resolution failed: \(error.localizedDescription, privacy: .public)")
+            return inputPassenger
+        }
+    }
+
     // MARK: - Helpers
+
+    /// FAST fetch for an existing trip by natural key.
+    private static func fetchTrip(withKey key: String, in context: NSManagedObjectContext) -> TripEntity? {
+        var result: TripEntity?
+        context.performAndWait {
+            let req: NSFetchRequest<TripEntity> = TripEntity.fetchRequest()
+            req.fetchLimit = 1
+            req.predicate = NSPredicate(format: "naturalKey == %@", key)
+            result = try? context.fetch(req).first
+        }
+        return result
+    }
 
     private static func tripDescription(_ trip: TripEntity) -> String {
         let df = DateFormatter()
