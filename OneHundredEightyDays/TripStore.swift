@@ -33,12 +33,12 @@ struct TripStore {
 
     /// Async save flow:
     /// 1) Compute travel day.
-    /// 2) **Duplicate-trip precheck** without user interaction:
-    ///    - Fetch existing trips for same airline+flight+day.
-    ///    - Compare passenger via deterministic normalization (no prompt).
+    /// 2) **Duplicate-trip precheck** (no user interaction):
+    ///    - Build RAW natural key (airline + flight + julian day + passenger from BCBP).
+    ///    - Look up exact `naturalKey` match in Core Data.
     ///    - If found, return existing and emit toast notification on the main queue.
     /// 3) Otherwise, run **NameDedupService** to confirm passenger name (auto-accept at 100%).
-    /// 4) Insert using a naturalKey built from the INPUT’s machine-normalized passenger (stable).
+    /// 4) Insert using the **same RAW natural key** (never any normalized/adjusted values).
     @discardableResult
     static func saveTripAsync(
         airline: String,
@@ -46,28 +46,48 @@ struct TripStore {
         destCode: String,
         flightNumber: String,
         julianDate: Int,
-        passenger: String,          // raw passenger as read from BCBP / manual input
+        passenger: String,          // RAW passenger as printed on BCBP / manual input
         imageData: Data?,
         in context: NSManagedObjectContext,
         similarityThreshold: Double = 0.82
     ) async throws -> TripEntity {
 
-        // 1) Resolve travel date (day precision)
+        // 1) Resolve travel date (day precision; UI only)
         let date = dateFromJulian(julianDate) ?? Date()
         let day = Calendar.current.startOfDay(for: date)
 
-        // 2) Duplicate-trip precheck (no UI): compare on airline+flight+day+normalized-passenger
-        let normalizedPassengerForKey = machineNormalizedPassenger(passenger)
-        if let existing = findExistingTrip(
-            airline: airline,
-            flightNumber: flightNumber,
-            travelDay: day,
-            passengerNormalized: normalizedPassengerForKey,
-            in: context
-        ) {
+        // Debug: show day (UTC), airline, flight
+        #if DEBUG
+        let dbgDF = DateFormatter()
+        dbgDF.calendar = Calendar(identifier: .gregorian)
+        dbgDF.timeZone = TimeZone(secondsFromGMT: 0)
+        dbgDF.dateFormat = "yyyy-MM-dd"
+        let dayStr = dbgDF.string(from: day)
+        print("[TripStore] DEBUG day=\(dayStr) airline=\(airline) flight=\(flightNumber)")
+        #endif
+
+        // 2) Duplicate-trip precheck by EXACT RAW naturalKey (no normalization)
+        // Trim only surrounding whitespace to avoid OCR-leading/trailing spaces; keep case & content.
+        let rawPassengerForKey = passenger.trimmingCharacters(in: .whitespacesAndNewlines)
+        let keyForPrecheck = rawNaturalKey(
+            airlineRaw: airline,
+            flightNumberRaw: flightNumber,
+            julianDateRaw: julianDate,
+            passengerRaw: rawPassengerForKey
+        )
+
+        #if DEBUG
+        print("[TripStore] DEBUG naturalKey(precheck, RAW)='\(keyForPrecheck)'")
+        #endif
+
+        if let existing = findByNaturalKey(keyForPrecheck, in: context) {
             log.notice("Duplicate trip detected (precheck): \(tripDescription(existing), privacy: .public)")
-            // ⛔️ Don't capture `existing` (non-Sendable) inside the @Sendable closure.
+            // Don't capture Core Data objects inside @Sendable closure:
             let message = tripDescription(existing)
+            #if DEBUG
+            let existingKey = existing.naturalKey ?? "nil"
+            print("[TripStore] DEBUG DUPLICATE(precheck): computedKey='\(keyForPrecheck)' existing.naturalKey='\(existingKey)'")
+            #endif
             DispatchQueue.main.async {
                 NotificationCenter.default.post(
                     name: .tripDuplicateDetected,
@@ -85,19 +105,18 @@ struct TripStore {
             threshold: similarityThreshold
         )
 
-        // 4) Generate display strings and country codes
+        // 4) Generate display strings and country codes (UI only)
         let departDisplay = airportLookup.displayName(for: originCode)
         let arriveDisplay = airportLookup.displayName(for: destCode)
         let departISO = airportLookup.airport(for: originCode)?.country.uppercased() ?? ""
         let arriveISO = airportLookup.airport(for: destCode)?.country.uppercased() ?? ""
 
-        // 5) Insert (naturalKey derived from INPUT’s machine-normalized passenger only)
-        let fixedKey = normalizedKey(
-            airline: airline,
-            flightNumber: flightNumber,
-            travelDate: day,
-            passenger: normalizedPassengerForKey
-        )
+        // === INSERT using the SAME RAW KEY we just prechecked ===
+        let fixedKey = keyForPrecheck
+
+        #if DEBUG
+        print("[TripStore] DEBUG naturalKey(final insert, RAW)='\(fixedKey)' (built from raw '\(rawPassengerForKey)')")
+        #endif
 
         var saved: TripEntity!
         var captured: Error?
@@ -106,11 +125,11 @@ struct TripStore {
             // === DIRECT INSERT ===
             let trip = TripEntity(context: context)
             trip.id                   = UUID()
-            trip.naturalKey           = fixedKey
-            trip.airline              = airline
-            trip.flightNumber         = flightNumber
-            trip.travelDate           = day
-            trip.passenger            = resolvedPassenger
+            trip.naturalKey           = fixedKey                    // identity: RAW-based key
+            trip.airline              = airline                     // raw airline as provided
+            trip.flightNumber         = flightNumber                // raw flight number as provided
+            trip.travelDate           = day                         // UI convenience; not in key
+            trip.passenger            = resolvedPassenger           // display only; not in key
             trip.departureCity        = departDisplay
             trip.arrivalCity          = arriveDisplay
             trip.departureCountry     = departISO
@@ -220,40 +239,33 @@ struct TripStore {
         }
     }
 
-    // MARK: - Duplicate-trip precheck helpers
+    // MARK: - RAW key helpers (NEW)
 
-    /// Deterministic, *non-interactive* normalization for passenger names to build keys/compare duplicates.
-    /// Uses your String normalization and uppercases for stability.
-    private static func machineNormalizedPassenger(_ s: String) -> String {
-        s.normalizedName.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    /// Build a RAW natural key using Airline + Flight Number + **Julian Day** + Passenger (all unmodified).
+    /// We keep a non-printable separator to avoid accidental collisions from user-visible chars.
+    private static func rawNaturalKey(
+        airlineRaw: String,
+        flightNumberRaw: String,
+        julianDateRaw: Int,
+        passengerRaw: String
+    ) -> String {
+        let sep = "\u{001F}" // Unit Separator
+        return [
+            airlineRaw,                       // exactly as provided/scanned
+            flightNumberRaw,                  // exactly as provided/scanned
+            String(julianDateRaw),            // raw julian day (no date conversion)
+            passengerRaw                      // trimmed only; keep original casing/content
+        ].joined(separator: sep)
     }
 
-    /// Looks up existing trips for the same airline+flight+day and compares passenger via machine normalization.
-    /// This avoids relying on historical `naturalKey` formats.
-    private static func findExistingTrip(
-        airline: String,
-        flightNumber: String,
-        travelDay: Date,
-        passengerNormalized: String,
-        in context: NSManagedObjectContext
-    ) -> TripEntity? {
+    /// Looks up an existing TripEntity by exact naturalKey match.
+    private static func findByNaturalKey(_ key: String, in context: NSManagedObjectContext) -> TripEntity? {
         var hit: TripEntity?
         context.performAndWait {
             let req: NSFetchRequest<TripEntity> = TripEntity.fetchRequest()
-            req.fetchLimit = 20
-            req.predicate = NSPredicate(
-                format: "airline ==[c] %@ AND flightNumber ==[c] %@ AND travelDate == %@",
-                airline, flightNumber, travelDay as NSDate
-            )
-            if let candidates = try? context.fetch(req), !candidates.isEmpty {
-                for t in candidates {
-                    let existingNorm = machineNormalizedPassenger(t.passenger ?? "")
-                    if existingNorm == passengerNormalized {
-                        hit = t
-                        break
-                    }
-                }
-            }
+            req.fetchLimit = 1
+            req.predicate = NSPredicate(format: "naturalKey == %@", key)
+            hit = try? context.fetch(req).first
         }
         return hit
     }
@@ -270,8 +282,34 @@ struct TripStore {
         """
     }
 
-    /// Build a normalized natural key using **Airline + Flight Number + Travel Day + Passenger**.
-    /// - Travel day is normalized to UTC "yyyy-MM-dd" to avoid TZ issues.
+    /// Convert IATA julian day to Date in the current year (day precision).
+    private static func dateFromJulian(
+        _ dayOfYear: Int,
+        year: Int = Calendar.current.component(.year, from: Date())
+    ) -> Date? {
+        var comps = DateComponents()
+        comps.year = year
+        comps.month = 1
+        comps.day = 1
+        let cal = Calendar(identifier: .gregorian)
+        guard let jan1 = cal.date(from: comps) else { return nil }
+        return cal.date(byAdding: .day, value: dayOfYear - 1, to: jan1).map {
+            cal.startOfDay(for: $0)
+        }
+    }
+
+    // MARK: - Legacy (no longer used; kept for reference)
+
+    /// ⚠️ Legacy passenger normalization — no longer used for identity checks.
+    /// Kept only to help during any one-off migration or debugging.
+    @available(*, deprecated, message: "Do not use for natural key or duplicate comparison.")
+    private static func machineNormalizedPassenger(_ s: String) -> String {
+        s.normalizedName.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+
+    /// ⚠️ Legacy normalized key (uppercased strings, date converted to yyyy-MM-dd).
+    /// Not used anymore; preserved for reference/migration only.
+    @available(*, deprecated, message: "Do not use; natural keys must be computed from RAW BCBP fields.")
     private static func normalizedKey(
         airline: String,
         flightNumber: String,
@@ -295,19 +333,44 @@ struct TripStore {
         ].joined(separator: "|")
     }
 
-    /// Convert IATA julian day to Date in the current year (day precision).
-    private static func dateFromJulian(
-        _ dayOfYear: Int,
-        year: Int = Calendar.current.component(.year, from: Date())
-    ) -> Date? {
-        var comps = DateComponents()
-        comps.year = year
-        comps.month = 1
-        comps.day = 1
-        let cal = Calendar(identifier: .gregorian)
-        guard let jan1 = cal.date(from: comps) else { return nil }
-        return cal.date(byAdding: .day, value: dayOfYear - 1, to: jan1).map {
-            cal.startOfDay(for: $0)
+    /// ⚠️ Legacy duplicate finder by normalized passenger — not used anymore.
+    @available(*, deprecated, message: "Use findByNaturalKey(_:in:) instead.")
+    private static func findExistingTrip(
+        airline: String,
+        flightNumber: String,
+        travelDay: Date,
+        passengerNormalized: String,
+        in context: NSManagedObjectContext
+    ) -> TripEntity? {
+        var hit: TripEntity?
+        context.performAndWait {
+            let req: NSFetchRequest<TripEntity> = TripEntity.fetchRequest()
+            req.fetchLimit = 20
+            req.predicate = NSPredicate(
+                format: "airline ==[c] %@ AND flightNumber ==[c] %@ AND travelDate == %@",
+                airline, flightNumber, travelDay as NSDate
+            )
+            if let candidates = try? context.fetch(req), !candidates.isEmpty {
+                #if DEBUG
+                print("[TripStore] DEBUG precheck candidates=\(candidates.count)")
+                #endif
+                for t in candidates {
+                    let existingNorm = machineNormalizedPassenger(t.passenger ?? "")
+                    #if DEBUG
+                    let nk = t.naturalKey ?? "nil"
+                    print("[TripStore] DEBUG candidate naturalKey='\(nk)' candidateNormPassenger='\(existingNorm)' vs keyNorm='\(passengerNormalized)'")
+                    #endif
+                    if existingNorm == passengerNormalized {
+                        hit = t
+                        break
+                    }
+                }
+            } else {
+                #if DEBUG
+                print("[TripStore] DEBUG precheck candidates=0")
+                #endif
+            }
         }
+        return hit
     }
 }
